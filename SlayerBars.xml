@@ -1,0 +1,80 @@
+<GuiXml>
+	<Animations>
+		<AnimationTimeline name="SlayerBarsLeadingShineIdleAnim" playbackType="PING_PONG" loopCount="LOOP_INDEFINITELY">
+			<Animations>
+				<ScaleAnimation duration="800" startScale="1.12" endScale="0.9">
+					<EasingFunction>
+                        return ZO_EaseOutQuartic(progress)
+                    </EasingFunction>
+				</ScaleAnimation>
+			</Animations>
+		</AnimationTimeline>
+		<AnimationTimeline name="SlayerBarsHitIndicatorAnimation">
+			<Animations>
+				<ColorAnimation duration="750" startColor="E6f55718" endColor="FFfffbe2">
+					<EasingFunction>
+                        return ZO_EaseOutQuadratic(progress)
+                    </EasingFunction>
+				</ColorAnimation>
+				<ScaleAnimation duration="150" startScale="1.6" endScale="1.0" />
+			</Animations>
+		</AnimationTimeline>
+	</Animations>
+	<Controls>
+		<Control name="SlayerBarStatusTemplate" virtual="true">
+			<Controls>
+				<StatusBar name="$(parent)Bar" inherits="ZO_DefaultStatusBar" textureFile="EsoUI/Art/UnitAttributeVisualizer/attributeBar_small_fill_center.dds" level="4">
+					<Dimensions y="23"/>
+					<Anchor point="TOPLEFT" relativeTo="$(parent)"/>
+					<Anchor point="BOTTOMRIGHT" relativeTo="$(parent)"/>
+					<LeadingEdge textureFile="SlayerBars/media/lead.dds" width="5"/>
+					<LeadingEdgeTextureCoords left="0" right="0.25390625" top="0" bottom="1"/>
+					<Controls>
+						<StatusBar name="$(parent)Gloss" hidden="true" override="true" level="6" textureFile=""></StatusBar>
+					</Controls>
+				</StatusBar>
+				<Label name="$(parent)BucketNumber" font="$(GAMEPAD_MEDIUM_FONT)|$(GP_22)|thick-outline" inherits="ZO_PlayerAttributeBarText" tier="HIGH" level="10">
+					<Anchor point="LEFT" relativeTo="$(parent)" relativePoint="LEFT" offsetX="12" offsetY="3" text="x10"/>
+				</Label>
+				<Label name="$(parent)ResourceNumbers" font="ZoFontGamepad22" inherits="ZO_PlayerAttributeBarText" tier="HIGH" level="10">
+					<Anchor point="RIGHT" relativeTo="$(parent)" relativePoint="RIGHT" offsetX="-10" offsetY="1"/>
+				</Label>
+				<StatusBar name="$(parent)Backlayer" tier="LOW" alpha="0.9" level="3">
+					<TextureCoords left="0" right="1" top="0" bottom="0.75"/>
+					<Anchor point="TOPLEFT"/>
+					<Anchor point="BOTTOMRIGHT"/>
+				</StatusBar>
+				<Backdrop name="$(parent)BgBackdrop" tier="LOW" level="1" inherits="ZO_FrameBackdrop">
+				            <Anchor point="TOPLEFT" offsetX="-2" offsetY="-3"/>
+							<Anchor point="BOTTOMRIGHT" offsetX="2" offsetY="3"/>
+				</Backdrop>
+				<Texture name="$(parent)Leadshine" textureFile="SlayerBars/media/lead.dds" tier="HIGH" level="8">
+					<Dimensions x="20" y="52"/>
+					<Anchor point="LEFT" relativeTo="$(parent)" relativePoint="LEFT"/>
+					<TextureCoords left="0.671875" right="1" top="0" bottom="1"/>
+				</Texture>
+				<Label name="$(parent)NameLabel" tier="HIGH" font="ZoFontHeader2" text="Target Name" color="f2e76b">
+					<Anchor point="BOTTOMRIGHT" relativeTo="$(parent)" relativePoint="TOPRIGHT" />
+				</Label>
+			</Controls>
+		</Control>
+		<TopLevelControl name="SlayerBar" mouseEnabled="true" movable="true" clampedToScreen="true">
+			<Dimensions x="700" y="100"/>
+			<Anchor point="CENTER" relativeTo="GuiRoot" />
+			<Controls>
+				<Control name="$(parent)Status" inherits="SlayerBarStatusTemplate">
+					<Dimensions x="500" y="25"/>
+					<Anchor point="CENTER" relativeTo="$(parent)" relativePoint="CENTER"/>
+				</Control>
+				<Texture name="$(parent)Icon" color="FF0000" layer="OVERLAY" level="10" textureFile="SlayerBars/media/reddiamond.dds" hidden="true">
+					<Dimensions x="50" y="100"/>
+					<Anchor point="RIGHT" relativeTo="$(parent)Status" relativePoint="BOTTOMLEFT" offsetX="8"/>
+				</Texture>
+				<Texture name="$(parent)InkBg" color="CC000000" layer="BACKGROUND" level="2" textureFile="SlayerBars/media/ink.dds" >
+					<Dimensions x="700" y="175"/>
+					<Anchor point="RIGHT" relativeTo="$(parent)Status" relativePoint="RIGHT" offsetX="50" offsetY="-14" />
+				</Texture>
+			</Controls>
+		</TopLevelControl>
+	</Controls>
+</GuiXml>
