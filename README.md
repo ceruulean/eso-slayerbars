@@ -46,4 +46,8 @@ For creating DDS files, I like using [TextConv](https://github.com/microsoft/Dir
 
 - [Ink Splatters by starline on Freepik](https://www.freepik.com/free-vector/black-ink-drops-watercolor-abstract-splatters-design_10016813.htm#fromView=keyword&page=1&position=40&uuid=cdd063f2-b646-4228-82a9-86edf4388b42&query=Ink+strokes) and [strokes by freepik](https://www.freepik.com/free-vector/ink-brush-stroke-collection_11350210.htm#fromView=keyword&page=4&position=10&uuid=cdd063f2-b646-4228-82a9-86edf4388b42&query=Ink+strokes)
 
+- [Claw Marks Vectors by Feri Saputra](https://www.vecteezy.com/vector-art/7164155-claw-scratch-vector-isolated-on-a-white-background-red-claw-mark-symbol-for-web-and-mobile-apps-vector-illustration)
+- [Silver Circle Frame](https://www.vecteezy.com/vector-art/1310963-blue-and-silver-metallic-diamond-with-circle-frame)
+
 - [Simple Health Bars by Cethiel](https://opengameart.org/content/simple-health-bars)
+

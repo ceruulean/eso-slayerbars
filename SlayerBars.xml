@@ -1,6 +1,6 @@
 <GuiXml>
 	<Animations>
-		<AnimationTimeline name="SlayerBarsLeadingShineIdleAnim" playbackType="PING_PONG" loopCount="LOOP_INDEFINITELY">
+		<AnimationTimeline name="SlayerBarsLeadingShineIdle" playbackType="PING_PONG" loopCount="LOOP_INDEFINITELY">
 			<Animations>
 				<ScaleAnimation duration="800" startScale="1.12" endScale="0.9">
 					<EasingFunction>
@@ -19,11 +19,27 @@
 				<ScaleAnimation duration="150" startScale="1.6" endScale="1.0" />
 			</Animations>
 		</AnimationTimeline>
+		<AnimationTimeline name="SlayerBarsDiamondZoomOut">
+			<Animations>
+                <AlphaAnimation duration="300" startAlpha="1" endAlpha="0">
+					<OnPlay>
+						animatingControl:SetHidden(false)
+					</OnPlay>
+                    <OnStop>
+                        animatingControl:SetHidden(true)
+                    </OnStop>
+					<EasingFunction>
+                        return ZO_EaseOutCubic(progress)
+                    </EasingFunction>
+                </AlphaAnimation>
+				<ScaleAnimation duration="300" startScale="1" endScale="2"/>
+			</Animations>
+		</AnimationTimeline>
 	</Animations>
 	<Controls>
 		<Control name="SlayerBarStatusTemplate" virtual="true">
 			<Controls>
-				<StatusBar name="$(parent)Bar" inherits="ZO_DefaultStatusBar" textureFile="EsoUI/Art/UnitAttributeVisualizer/attributeBar_small_fill_center.dds" level="4">
+				<StatusBar name="$(parent)Bar" inherits="ZO_DefaultStatusBar" textureFile="EsoUI/Art/UnitAttributeVisualizer/attributeBar_small_fill_center.dds" level="1">
 					<Dimensions y="23"/>
 					<Anchor point="TOPLEFT" relativeTo="$(parent)"/>
 					<Anchor point="BOTTOMRIGHT" relativeTo="$(parent)"/>
@@ -39,16 +55,16 @@
 				<Label name="$(parent)ResourceNumbers" font="ZoFontGamepad22" inherits="ZO_PlayerAttributeBarText" tier="HIGH" level="10">
 					<Anchor point="RIGHT" relativeTo="$(parent)" relativePoint="RIGHT" offsetX="-10" offsetY="1"/>
 				</Label>
-				<StatusBar name="$(parent)Backlayer" tier="LOW" alpha="0.9" level="3">
+				<StatusBar name="$(parent)Backlayer" alpha="0.9" level="0">
 					<TextureCoords left="0" right="1" top="0" bottom="0.75"/>
 					<Anchor point="TOPLEFT"/>
 					<Anchor point="BOTTOMRIGHT"/>
 				</StatusBar>
-				<Backdrop name="$(parent)BgBackdrop" tier="LOW" level="1" inherits="ZO_FrameBackdrop">
+				<Backdrop name="$(parent)BgBackdrop" layer="BACKGROUND" level="3" inherits="ZO_FrameBackdrop">
 				            <Anchor point="TOPLEFT" offsetX="-2" offsetY="-3"/>
 							<Anchor point="BOTTOMRIGHT" offsetX="2" offsetY="3"/>
 				</Backdrop>
-				<Texture name="$(parent)Leadshine" textureFile="SlayerBars/media/lead.dds" tier="HIGH" level="8">
+				<Texture name="$(parent)Leadshine" textureFile="SlayerBars/media/lead.dds" tier="HIGH" level="50">
 					<Dimensions x="20" y="52"/>
 					<Anchor point="LEFT" relativeTo="$(parent)" relativePoint="LEFT"/>
 					<TextureCoords left="0.671875" right="1" top="0" bottom="1"/>
@@ -62,18 +78,29 @@
 			<Dimensions x="700" y="100"/>
 			<Anchor point="CENTER" relativeTo="GuiRoot" />
 			<Controls>
-				<Control name="$(parent)Status" inherits="SlayerBarStatusTemplate">
+				<Control name="$(parent)Main" inherits="SlayerBarStatusTemplate">
 					<Dimensions x="500" y="25"/>
 					<Anchor point="CENTER" relativeTo="$(parent)" relativePoint="CENTER"/>
 				</Control>
-				<Texture name="$(parent)Icon" color="FF0000" layer="OVERLAY" level="10" textureFile="SlayerBars/media/reddiamond.dds" hidden="true">
-					<Dimensions x="50" y="100"/>
-					<Anchor point="RIGHT" relativeTo="$(parent)Status" relativePoint="BOTTOMLEFT" offsetX="8"/>
+				<Texture name="$(parent)FrameCircle" TIER="HIGH" layer="CONTROLS" level="20" textureFile="SlayerBars/media/frame_metal_circle.dds" >
+					<Dimensions x="80" y="80"/>
+					<Anchor point="RIGHT" relativeTo="$(parent)Main" relativePoint="LEFT" offsetX="2"/>
 				</Texture>
-				<Texture name="$(parent)InkBg" color="CC000000" layer="BACKGROUND" level="2" textureFile="SlayerBars/media/ink.dds" >
-					<Dimensions x="700" y="175"/>
-					<Anchor point="RIGHT" relativeTo="$(parent)Status" relativePoint="RIGHT" offsetX="50" offsetY="-14" />
+				<Texture name="$(parent)DiamondIndicator" color="FF0000" layer="OVERLAY" TIER="HIGH" level="50" textureFile="SlayerBars/media/reddiamond.dds">
+					<Dimensions x="100" y="50"/>
+					<Anchor point="CENTER" relativeTo="$(parent)FrameCircle" relativePoint="CENTER"/>
 				</Texture>
+				<Texture name="$(parent)InkBg" color="CC000000" layer="BACKGROUND" textureFile="SlayerBars/media/ink.dds" >
+					<Dimensions x="600" y="100"/>
+					<Anchor point="RIGHT" relativeTo="$(parent)Main" relativePoint="RIGHT" offsetX="50" offsetY="-14" />
+					<Controls>
+						<StatusBar name="$(parent)OffBalance" layer="BACKGROUND" color="CCFFFFFF" level="2" textureFile="SlayerBars/media/ink.dds" >
+						<Dimensions x="600" y="100"/>
+						<Anchor point="RIGHT" relativeTo="$(parent)InkBg" relativePoint="RIGHT" />
+						</StatusBar>
+					</Controls>
+				</Texture>
+
 			</Controls>
 		</TopLevelControl>
 	</Controls>
