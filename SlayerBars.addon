@@ -9,8 +9,9 @@
 ## Author: ceruulean
 ## Version: 0.1
 ## SavedVariables: SlayerBarsSavedVariables
-## DependsOn: LibAddonMenu-2.0>=40
-## OptionalDependsOn: LuiMedia CrutchAlerts
+## DependsOn: LibAddonMenu-2.0>=40 LuiMedia
+## OptionalDependsOn: 
 
+settings.lua
 SlayerBars.lua
 SlayerBars.xml

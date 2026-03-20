@@ -1,6 +1,6 @@
 # Slayer Bars
 
-Converts boss bars into 10 stacked/layered HP bars, where each bar peels off as the fight progresses. The design is used in some Asian action RPGs with bosses that have millions of health. Makes it easier to estimate HP %, predict mechs, and switch to execute rotation.
+Converts boss bars into stacked/layered HP bars, where each bar peels off as the fight progresses. The design is used in Asian action RPGs with bosses that have absurd health values. Makes it easier to estimate HP %, predict phases, and switch to execute rotation.
 
 ## How to edit art files
 
@@ -43,11 +43,12 @@ For creating DDS files, I like using [TextConv](https://github.com/microsoft/Dir
 ### Textures
 
 - [Light Flare by freepik](https://www.freepik.com/free-psd/realistic-light-collection_408597479.htm)
-
 - [Ink Splatters by starline on Freepik](https://www.freepik.com/free-vector/black-ink-drops-watercolor-abstract-splatters-design_10016813.htm#fromView=keyword&page=1&position=40&uuid=cdd063f2-b646-4228-82a9-86edf4388b42&query=Ink+strokes) and [strokes by freepik](https://www.freepik.com/free-vector/ink-brush-stroke-collection_11350210.htm#fromView=keyword&page=4&position=10&uuid=cdd063f2-b646-4228-82a9-86edf4388b42&query=Ink+strokes)
-
 - [Claw Marks Vectors by Feri Saputra](https://www.vecteezy.com/vector-art/7164155-claw-scratch-vector-isolated-on-a-white-background-red-claw-mark-symbol-for-web-and-mobile-apps-vector-illustration)
 - [Silver Circle Frame](https://www.vecteezy.com/vector-art/1310963-blue-and-silver-metallic-diamond-with-circle-frame)
+- [Demon Face](https://www.vecteezy.com/vector-art/35234926-silhouette-demon-face-icon-vector-illustration-design)
+- [Dizzy symbol, circling stars,](https://www.deviantart.com/pride-flags/art/Dizzy-symbol-circling-stars-squeans-Emoji-878073156)
 
+### Not used Yet
 - [Simple Health Bars by Cethiel](https://opengameart.org/content/simple-health-bars)
 
