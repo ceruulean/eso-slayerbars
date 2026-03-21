@@ -93,7 +93,7 @@
 						<StatusBar name="$(parent)Gloss" hidden="true" override="true" level="6" textureFile=""></StatusBar>
 					</Controls>
 				</StatusBar>
-				<Label name="$(parent)BarCountLabel" font="$(GAMEPAD_MEDIUM_FONT)|$(GP_22)|thick-outline" inherits="ZO_PlayerAttributeBarText" tier="HIGH" level="10">
+				<Label name="$(parent)StacksLabel" font="$(GAMEPAD_MEDIUM_FONT)|$(GP_22)|thick-outline" inherits="ZO_PlayerAttributeBarText" tier="HIGH" level="10">
 					<Anchor point="LEFT" relativeTo="$(parent)" relativePoint="LEFT" offsetX="7" offsetY="3" text="x10"/>
 				</Label>
 				<Label name="$(parent)ResourceNumbers" font="ZoFontGamepad22" inherits="ZO_PlayerAttributeBarText" tier="HIGH" level="10">
@@ -104,21 +104,22 @@
 					<Anchor point="TOPLEFT"/>
 					<Anchor point="BOTTOMRIGHT"/>
 				</StatusBar>
-				<Backdrop name="$(parent)BgBackdrop" color="2e2d2a" layer="BACKGROUND" level="3" inherits="ZO_DarkThinFrame">
-					<Anchor point="TOPLEFT" offsetX="-2" offsetY="-3"/>
-					<Anchor point="BOTTOMRIGHT" offsetX="2" offsetY="3"/>
-				</Backdrop>
+				<Backdrop name="$(parent)BgBackdrop" layer="BACKGROUND" level="3" inherits="ZO_DarkThinFrame"/>
 				<Texture name="$(parent)Leadshine" textureFile="SlayerBars/media/lead.dds" tier="HIGH" level="50">
 					<Dimensions x="20" y="52"/>
 					<Anchor point="CENTER" relativeTo="$(parent)" relativePoint="LEFT"/>
 					<TextureCoords left="0.671875" right="1" top="0" bottom="1"/>
 				</Texture>
 				<Label name="$(parent)NameLabel" tier="HIGH" font="ZoFontHeader2" text="Target Name" color="f2e76b">
-					<Anchor point="BOTTOMRIGHT" relativeTo="$(parent)" relativePoint="TOPRIGHT" />
+					<Anchor point="BOTTOMRIGHT" relativeTo="$(parent)" relativePoint="TOPRIGHT" offsetY="-3" />
 				</Label>
+				<Texture name="$(parent)FlashOverlay" tier="HIGH" level="5" inherits="ZO_TintableBackground" color="000000" blendMode="COLOR_DODGE">
+					<Anchor point="TOPLEFT" offsetX="-3" offsetY="-3"/>
+					<Anchor point="BOTTOMRIGHT" offsetX="3" offsetY="3"/>
+				</Texture>
 			</Controls>
 		</Control>
-		<TopLevelControl name="SlayerBar" mouseEnabled="true" movable="false" clampedToScreen="true">
+		<TopLevelControl name="SlayerBar" mouseEnabled="true" movable="false" clampedToScreen="true" hidden="true">
 			<Dimensions x="700" y="30"/>
 			<Anchor point="CENTER" relativeTo="GuiRoot" />
 			<Controls>
@@ -166,6 +167,9 @@
 			<OnMoveStop>
 				SlayerBars.OnMoveStop(self)
 			</OnMoveStop>
+		</TopLevelControl>
+		<TopLevelControl name="SlayerBarsOtherBars" mouseEnabled="true" movable="false" clampedToScreen="true">
+			<Anchor point="CENTER" relativeTo="GuiRoot" />
 		</TopLevelControl>
 	</Controls>
 </GuiXml>
