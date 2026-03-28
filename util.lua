@@ -1,4 +1,4 @@
-SlayerBars = SlayerBars or {}
+SlayerBars = SlayerBars
 SlayerBars.Util = {}
 
 -- returns left, top, right, bottom, width, height

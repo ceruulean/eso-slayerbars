@@ -99,13 +99,13 @@
 				<Label name="$(parent)ResourceNumbers" font="ZoFontGamepad22" inherits="ZO_PlayerAttributeBarText" tier="HIGH" level="10">
 					<Anchor point="RIGHT" relativeTo="$(parent)" relativePoint="RIGHT" offsetX="-10" offsetY="1"/>
 				</Label>
-				<StatusBar name="$(parent)Backlayer" alpha="0.9" level="0">
+				<StatusBar name="$(parent)Backlayer" level="0">
 					<TextureCoords left="0" right="1" top="0" bottom="0.75"/>
 					<Anchor point="TOPLEFT"/>
 					<Anchor point="BOTTOMRIGHT"/>
 				</StatusBar>
 				<Backdrop name="$(parent)BgBackdrop" layer="BACKGROUND" level="3" inherits="ZO_DarkThinFrame"/>
-				<Texture name="$(parent)Leadshine" textureFile="SlayerBars/media/lead.dds" tier="HIGH" level="50">
+				<Texture name="$(parent)Leadshine" textureFile="SlayerBars/media/lead.dds" tier="HIGH" level="19">
 					<Dimensions x="20" y="52"/>
 					<Anchor point="CENTER" relativeTo="$(parent)" relativePoint="LEFT"/>
 					<TextureCoords left="0.671875" right="1" top="0" bottom="1"/>
@@ -117,6 +117,24 @@
 					<Anchor point="TOPLEFT" offsetX="-3" offsetY="-3"/>
 					<Anchor point="BOTTOMRIGHT" offsetX="3" offsetY="3"/>
 				</Texture>
+				<Texture name="$(parent)RightBracket" hidden="true" textureCoordsRotation="1.5708" textureFile="EsoUI/Art/Trials/trialPoints_verylow.dds" tier="HIGH" level="5" >
+					<Dimensions x="64" y="64" />
+					<Anchor point="CENTER" relativeTo="$(parent)" relativePoint="RIGHT" offsetX="7" />
+				</Texture>
+			</Controls>
+		</Control>
+		<Control name="SlayerBarCircleTemplate" virtual="true">
+			<Controls>
+				<Texture name="$(parent)FrameCircle" color="ccbc8f" TIER="HIGH" layer="CONTROLS" level="20" textureFile="SlayerBars/media/frame_metal_circle.dds" >
+					<Dimensions x="80" y="80"/>
+					<Anchor point="CENTER" />
+					<Controls>
+						<Texture name="$(parent)Inner" layer="CONTROLS" level="15">
+							<Dimensions x="80" y="80"/>
+							<Anchor point="CENTER" relativeTo="$(parent)" relativePoint="CENTER"/>
+						</Texture>
+					</Controls>
+				</Texture>
 			</Controls>
 		</Control>
 		<TopLevelControl name="SlayerBar" mouseEnabled="true" movable="false" clampedToScreen="true" hidden="true">
@@ -127,31 +145,25 @@
 					<Dimensions x="500" y="15"/>
 					<Anchor point="CENTER" relativeTo="$(parent)" relativePoint="CENTER"/>
 				</Control>
-				<Texture name="$(parent)FrameCircle" color="ccbc8f" TIER="HIGH" layer="CONTROLS" level="20" textureFile="SlayerBars/media/frame_metal_circle.dds" >
+				<Control name="$(parent)Tracker" inherits="SlayerBarCircleTemplate" >
 					<Dimensions x="80" y="80"/>
 					<Anchor point="RIGHT" relativeTo="$(parent)Main" relativePoint="LEFT" offsetX="1"/>
-					<Controls>
-						<Texture name="$(parent)Inner" color="2e2d2a" layer="CONTROLS" level="15">
-							<Dimensions x="80" y="80"/>
-							<Anchor point="CENTER" relativeTo="$(parent)" relativePoint="CENTER"/>
-						</Texture>
-					</Controls>
-				</Texture>
+				</Control>
 				<Texture name="$(parent)DiamondIndicator" hidden="true" color="FF0000" layer="OVERLAY" TIER="HIGH" level="20" textureFile="SlayerBars/media/reddiamond.dds">
-					<Dimensions x="100" y="100"/>
-					<Anchor point="CENTER" relativeTo="$(parent)FrameCircle" relativePoint="CENTER"/>
+					<Dimensions x="100" y="50"/>
+					<Anchor point="CENTER" relativeTo="$(parent)Tracker" relativePoint="CENTER"/>
 				</Texture>
 				<Texture name="$(parent)IconDemon" hidden="true" color="F0e83b27" layer="OVERLAY" TIER="HIGH" level="21" textureFile="SlayerBars/media/icon_demon.dds">
 					<Dimensions x="90" y="90"/>
-					<Anchor point="CENTER" relativeTo="$(parent)FrameCircle" relativePoint="CENTER"/>
+					<Anchor point="CENTER" relativeTo="$(parent)Tracker" relativePoint="CENTER"/>
 				</Texture>
 				<Texture name="$(parent)IconDemonGlow" color="F0e83b27" layer="OVERLAY" TIER="HIGH" level="19" textureFile="SlayerBars/media/icon_demon_glow.dds">
 					<Dimensions x="90" y="90"/>
-					<Anchor point="CENTER" relativeTo="$(parent)FrameCircle" relativePoint="CENTER" offsetY="3"/>
+					<Anchor point="CENTER" relativeTo="$(parent)Tracker" relativePoint="CENTER"/>
 				</Texture>
 				<Texture name="$(parent)IconDizzyStars" hidden="true" color="f2e76b" layer="OVERLAY" TIER="HIGH" level="19" textureFile="SlayerBars/media/dizzystars.dds">
 					<Dimensions x="90" y="90"/>
-					<Anchor point="CENTER" relativeTo="$(parent)FrameCircle" relativePoint="CENTER" offsetY="-10"/>
+					<Anchor point="CENTER" relativeTo="$(parent)Tracker" relativePoint="CENTER" offsetY="-10"/>
 				</Texture>
 				<Texture name="$(parent)InkBg" hidden="true" color="CC000000" layer="BACKGROUND" textureFile="SlayerBars/media/ink.dds" >
 					<Dimensions x="550" y="100"/>
@@ -168,8 +180,11 @@
 				SlayerBars.OnMoveStop(self)
 			</OnMoveStop>
 		</TopLevelControl>
-		<TopLevelControl name="SlayerBarsOtherBars" mouseEnabled="true" movable="false" clampedToScreen="true">
+		<TopLevelControl name="SlayerBarsOtherBars" mouseEnabled="true" movable="false" clampedToScreen="true" hidden="true">
 			<Anchor point="CENTER" relativeTo="GuiRoot" />
+			<OnMoveStop>
+				SlayerBars.OnMoveStop(self)
+			</OnMoveStop>
 		</TopLevelControl>
 	</Controls>
 </GuiXml>
