@@ -145,7 +145,7 @@
 					<Dimensions x="500" y="15"/>
 					<Anchor point="CENTER" relativeTo="$(parent)" relativePoint="CENTER"/>
 				</Control>
-				<Control name="$(parent)Tracker" inherits="SlayerBarCircleTemplate" >
+				<Control name="$(parent)Tracker" inherits="SlayerBarCircleTemplate">
 					<Dimensions x="80" y="80"/>
 					<Anchor point="RIGHT" relativeTo="$(parent)Main" relativePoint="LEFT" offsetX="1"/>
 				</Control>

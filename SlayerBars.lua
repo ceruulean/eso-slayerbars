@@ -6,6 +6,7 @@ SlayerBars = {
 	is_unlocked = false,
 	ability = {},
 	Anim = {},
+	instantiatedBars = {},
 	STATE = {
 		OOC_IDLE = 0,
 		COMBAT_IDLE = 1,
@@ -16,7 +17,6 @@ SlayerBars = {
 	}
 }
 local SB = SlayerBars
-local DEFAULT_UNITNAME = GetString(SI_OPTIONS_ENEMY_NPC_NAMEPLATE_GAMEPAD)
 local primary_bar_frag
 
 local PRIMARY_BAR = nil
@@ -109,33 +109,31 @@ local function TableContains(tab, val)
 end
 
 local function GetNameOrDefault(unitTag)
+	local DEFAULT_UNITNAME = GetString(SI_OPTIONS_ENEMY_NPC_NAMEPLATE_GAMEPAD)
 	local name = GetUnitName(unitTag)
 	return (name and name ~= "") and name or DEFAULT_UNITNAME
 end
 
 local function CircularTexture(ctrl, texture)
 	local cx, cy = ctrl:GetCenter()
-	cx, cy = ctrl:GetCenter()
 	ctrl:SetCircularClip(cx, cy, 39)
 	ctrl:SetTexture(texture)
 end
 
-local timerActive = false
 function debounce(fn, delay)
+	local timerActive = false
 	local lastArgs = nil
+
 	return function(...)
 		lastArgs = {...}
-		if timerActive then
-			return
-		end
+		if timerActive then return end
+
 		timerActive = true
 		fn(unpack(lastArgs))
-		zo_callLater(
-			function()
-				timerActive = false
-			end,
-			delay
-		)
+
+		zo_callLater(function()
+			timerActive = false
+		end, delay)
 	end
 end
 
@@ -225,24 +223,17 @@ function StackedBar:RegisterImpactfulHit()
 	self.control:RegisterForEvent(
 		EVENT_COMBAT_EVENT,
 		function(_, ...)
-			self:CombatOutgoing(_, ...)
+			self:OnCombatEvent(_, ...)
 		end
 	)
-	self.control:AddFilterForEvent(EVENT_COMBAT_EVENT, REGISTER_FILTER_SOURCE_COMBAT_UNIT_TYPE, COMBAT_UNIT_TYPE_PLAYER)
+	-- self.control:AddFilterForEvent(EVENT_COMBAT_EVENT, REGISTER_FILTER_SOURCE_COMBAT_UNIT_TYPE, COMBAT_UNIT_TYPE_PLAYER)
 end
 
 
-function StackedBar:CombatOutgoing(result, isError, abilityName, abilityGraphic, abilityActionSlotType, sourceName, sourceType, targetName, targetType, hitValue, powerType, damageType, log, sourceUnitId, targetUnitId, abilityId, overflow)
-	local LeadHit =
-		debounce(
-		function()
-			self.leadshineHitAnim:PlayFromStart()
-			--ANIM.DiamondPulse:PlayFromStart()
-		end,
-		800
-	)
-	if result == ACTION_RESULT_CRITICAL_DAMAGE or ACTION_RESULT_DOT_TICK_CRITICAL then
-		LeadHit()
+function StackedBar:OnCombatEvent(result, isError, abilityName, abilityGraphic, abilityActionSlotType, sourceName, sourceType, targetName, targetType, hitValue, powerType, damageType, log, sourceUnitId, targetUnitId, abilityId, overflow)
+	-- if self.unitName == targetName then d("traget: "..targetName) end
+	if sourceType == COMBAT_UNIT_TYPE_PLAYER and (result == ACTION_RESULT_CRITICAL_DAMAGE or result == ACTION_RESULT_DOT_TICK_CRITICAL) then
+		PRIMARY_BAR.leadHit()
 	end
 end
 
@@ -265,8 +256,7 @@ function StackedBar:UpdateDifficulty()
 			stacks = 1
 		end
 	end
-	self.stacks = stacks
-	self.bucketWidth = stacks / PEEL_COLORS_COUNT
+	self:SetStacks(stacks)
 	self:OnPowerUpdate(self.unitTag, _, POWERTYPE_HEALTH, current, maxhp, effmax)
 end
 
@@ -297,8 +287,9 @@ local g_animationPool
 local DEFAULT_ANIMATION_TIME_MS = 500
 
 local function OnAnimationTransitionUpdate(animation, progress)
-	if not ctrl then return end
 	local ctrl = animation.ctrl
+	if not ctrl then return end
+
 	local initialValue = animation.initialValue
 	local endValue = animation.endValue
 	local newBarValue = zo_lerp(initialValue, endValue, progress)
@@ -424,12 +415,17 @@ function StackedBar:SetValue(value)
 		end
 	end
 	local dead = value == 0
-	if not dead or leadshine:IsHidden() then
-		LeadshineSmoothTransition(leadshine, bar, percentPos * self.barWidth, self.barWidth, false)
+	if leadshine ~= nil then
+		leadshine:SetHidden(dead)
+		if not dead then
+			LeadshineSmoothTransition(leadshine, bar, percentPos * self.barWidth, self.barWidth, false)
+		end
 	end
 	
 	if self.resourceNumberFormat == RESOURCE_NUMBERS_SETTING_NUMBER_AND_PERCENT then
-		self.resourceNumbers:SetText(ZO_AbbreviateAndLocalizeNumber(value, NUMBER_ABBREVIATION_PRECISION_TENTHS, false).." ("..FormatPercent(value, mx).."%)")
+		self.resourceNumbers:SetText(
+		string.format("%s (%d%%)", ZO_AbbreviateAndLocalizeNumber(value, NUMBER_ABBREVIATION_PRECISION_TENTHS, false), FormatPercent(value, mx))
+		)
 	elseif self.resourceNumberFormat == RESOURCE_NUMBERS_SETTING_NUMBER_ONLY then
 		self.resourceNumbers:SetText(ZO_AbbreviateAndLocalizeNumber(value, NUMBER_ABBREVIATION_PRECISION_TENTHS, false))
 	elseif self.resourceNumberFormat == RESOURCE_NUMBERS_SETTING_PERCENT_ONLY then
@@ -500,8 +496,8 @@ function SB.UpdateAllBars()
 end
 
 function SB.OnRoleChanged(_, unitTag, newRole)
-	SlayerBarIconDemon:SetHidden(not newRole == LFG_ROLE_TANK)
-	SlayerBarIconDemonGlow:SetHidden(not newRole == LFG_ROLE_TANK)
+	SlayerBarIconDemon:SetHidden(newRole ~= LFG_ROLE_TANK)
+	SlayerBarIconDemonGlow:SetHidden(newRole ~= LFG_ROLE_TANK)
 	SlayerBarDiamondIndicator:SetHidden(newRole == LFG_ROLE_TANK)
 end
 
@@ -544,6 +540,7 @@ end
 
 function SB.OnEffectChanged(_,changeType,effectSlot,effectName,unitTag,beginTime,endTime,stackCount,iconName,buffType,effectType,abilityType,statusEffectType,unitName,unitId,abilityId,sourceUnitType)
 	if not enemyEffects[unitId] then enemyEffects[unitId] = {} end
+	-- d(unitTag) sometimes is boss1-N
 	if unitTag == "reticleover" then
 		enemyEffects[unitTag].unitId = unitId
 	end
@@ -563,7 +560,6 @@ function SB.OnEffectChanged(_,changeType,effectSlot,effectName,unitTag,beginTime
 			local total = (endTime - beginTime) * 1000
 			local remaining = endTime * 1000 - GetFrameTimeMilliseconds()
             -- SlayerBarTrackerFrameCircleCooldown:SetHidden(false)
-			d("total:", total)
 			-- SlayerBarFrameCircleCooldown:SetVerticalCooldownLeadingEdgeHeight(12)
             -- SlayerBarFrameCircleCooldown:SetAlpha(1)
 			-- SlayerBarFrameCircleCooldown:StartCooldown(remaining, total, CD_TYPE_VERTICAL_REVEAL, CD_TIME_TYPE_TIME_UNTIL, false)
@@ -632,21 +628,20 @@ function SB.OnMoveStop(control)
 	SB.UpdateAllBars()
 end
 
-SB.instantiatedBars = {}
 function SB.Unlock(unlock)
-	local u = unlock
-	if unlock == nil then u = true end
+	local u = (unlock == nil) and true or unlock
 	SlayerBar:SetMovable(u)
 	SlayerBar:SetHidden(not u)
 	SlayerBarsOtherBars:SetMovable(u)
 	SlayerBarsOtherBars:SetHidden(not u)
-	for u, v in pairs(SB.instantiatedBars) do
-		v.control:SetHidden(not u)
-	end
 	if u then
+		for k,v in pairs(SB.instantiatedBars) do
+			v:Show()
+		end
 		GAME_MENU_SCENE:AddFragment(SB.other_bars_frag)
 		GAME_MENU_SCENE:AddFragment(primary_bar_frag)
 	else
+		SB.OnBossesChanged(_, true)
 		GAME_MENU_SCENE:RemoveFragment(SB.other_bars_frag)
 		GAME_MENU_SCENE:RemoveFragment(primary_bar_frag)
 	end
@@ -687,6 +682,7 @@ function SB.OnBossesChanged(_, forceReset)
 		PRIMARY_BAR:Show()
 	else
 		SlayerBar:SetHidden(true)
+		PRIMARY_BAR:Release()
 	end
 	for i = 2, MAX_BOSSES do
 		local tag = "boss"..i
@@ -740,6 +736,9 @@ end
 
 function SB.InitBars()
 	PRIMARY_BAR = StackedBar:New("boss1", SlayerBarMain)
+	PRIMARY_BAR.leadHit = debounce(function()
+		self.leadshineHitAnim:PlayFromStart()
+	end, 800)
 	SB.other_bars_frag = ZO_SimpleSceneFragment:New(SlayerBarsOtherBars)
 	primary_bar_frag = ZO_SimpleSceneFragment:New(SlayerBar)
 	HUD_SCENE:AddFragment(primary_bar_frag)
@@ -753,6 +752,7 @@ function SB.InitBars()
 		stkd:SetValue(1)
 		stkd:UpdateStyle()
 		stkd.leadshine:SetHidden(true)
+		stkd.leadshine = nil -- do not update or show
 		SB.instantiatedBars[tag] = stkd
 	end
 	SB.UpdateDisplayLayout()
