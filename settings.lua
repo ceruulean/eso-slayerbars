@@ -93,6 +93,7 @@ end
 
 local savedVersion = 1
 local DEFAULTS = {
+	debugMode = false,
     targetBarTex = "Inner Shadow Glossy",
     targetBacklayerTex = "Cilo",
     backdropStyle = BACKDROP_CHOICES[1],
@@ -179,8 +180,7 @@ local optionsData = {
             SB.is_unlocked = newValue
             SB.Unlock(newValue)
         end,
-        width = "half",
-        default = false
+        width = "half"
     },
     {
         type = "button",

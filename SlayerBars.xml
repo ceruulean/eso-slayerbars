@@ -79,6 +79,11 @@
 				<ScaleAnimation duration="300" startScale="0" endScale="1"/>
 			</Animations>
 		</AnimationTimeline>
+        <AnimationTimeline name="SlayerBarsScroll" playbackType="LOOP" loopCount="LOOP_INDEFINITELY">
+            <Animations>
+                <TextureSlideAnimation deltaU="-1" duration="10000"/>
+            </Animations>
+        </AnimationTimeline>
 	</Animations>
 	<Controls>
 		<Control name="SlayerBarStatusTemplate" virtual="true">
@@ -110,10 +115,10 @@
 					<Anchor point="CENTER" relativeTo="$(parent)" relativePoint="LEFT"/>
 					<TextureCoords left="0.671875" right="1" top="0" bottom="1"/>
 				</Texture>
-				<Label name="$(parent)NameLabel" tier="HIGH" font="ZoFontHeader2" text="Target Name" color="f2e76b">
-					<Anchor point="BOTTOMRIGHT" relativeTo="$(parent)" relativePoint="TOPRIGHT" offsetY="-3" />
+				<Label name="$(parent)NameLabel" tier="HIGH" font="ZoFontHeader2" text="SI_OPTIONS_ENEMY_NPC_NAMEPLATE_GAMEPAD" color="f2e76b">
+					<Anchor point="BOTTOMRIGHT" relativeTo="$(parent)" relativePoint="TOPRIGHT" offsetY="-2" />
 				</Label>
-				<Texture name="$(parent)FlashOverlay" tier="HIGH" level="5" inherits="ZO_TintableBackground" color="000000" blendMode="COLOR_DODGE">
+				<Texture name="$(parent)FlashOverlay" tier="HIGH" level="5" inherits="ZO_TintableBackground" color="000000" blendMode="COLOR_DODGE" addressMode="WRAP" autoAdjustTextureCoords="false">
 					<Anchor point="TOPLEFT" offsetX="-3" offsetY="-3"/>
 					<Anchor point="BOTTOMRIGHT" offsetX="3" offsetY="3"/>
 				</Texture>
