@@ -1,195 +1,197 @@
 <GuiXml>
-	<Animations>
-		<AnimationTimeline name="SlayerBarsLeadingShineIdle" playbackType="PING_PONG" loopCount="LOOP_INDEFINITELY">
-			<Animations>
-				<ScaleAnimation duration="800" startScale="1.12" endScale="0.9">
-					<EasingFunction>
-						return ZO_EaseOutQuartic(progress)
-					</EasingFunction>
-				</ScaleAnimation>
-			</Animations>
-		</AnimationTimeline>
-		<AnimationTimeline name="SlayerBarsHitIndicatorAnimation">
-			<Animations>
-				<ColorAnimation duration="750" startColor="E6f55718" endColor="FFfffbe2">
-					<EasingFunction>
-						return ZO_EaseOutQuadratic(progress)
-					</EasingFunction>
-				</ColorAnimation>
-				<ScaleAnimation duration="150" startScale="1.6" endScale="1.0" />
-			</Animations>
-		</AnimationTimeline>
-		<AnimationTimeline name="SlayerBarsLeadFollowAnimation">
-			<Animations>
-				<TranslateAnimation duration="500" deltaX="225" deltaY="0" anchorIndex="0">
-					<EasingFunction>
-						return ZO_EaseOutCubic(progress)
-					</EasingFunction>
-				</TranslateAnimation>
-			</Animations>
-		</AnimationTimeline>
-		<AnimationTimeline name="SlayerBarsZoomOut">
-			<Animations>
-				<AlphaAnimation duration="300" startAlpha="1" endAlpha="0">
-					<OnPlay>
-						animatingControl:SetHidden(false)
-					</OnPlay>
-					<OnStop>
-						animatingControl:SetHidden(true)
-					</OnStop>
-					<EasingFunction>
-						return ZO_EaseOutCubic(progress)
-					</EasingFunction>
-				</AlphaAnimation>
-				<ScaleAnimation duration="300" startScale="1" endScale="2"/>
-			</Animations>
-		</AnimationTimeline>
-		<AnimationTimeline name="SlayerBarsUIShake">
-			<Animations>
-				<TranslateAnimation duration="100" deltaX="0" deltaY="-4" >
-					<EasingFunction>
-						return ZO_EaseOutQuadratic(progress)
-					</EasingFunction>
-				</TranslateAnimation>
-				<TranslateAnimation delay="100" duration="100" deltaX="3" deltaY="8" ></TranslateAnimation>
-				<TranslateAnimation delay="200" duration="100" deltaX="-5" deltaY="-6" ></TranslateAnimation>
-				<TranslateAnimation delay="300" duration="100" deltaX="4" deltaY="4" ></TranslateAnimation>
-				<TranslateAnimation delay="400" duration="100" deltaX="-2" deltaY="-2" >
-					<EasingFunction>
-						return ZO_EaseOutQuadratic(progress)
-					</EasingFunction>
-				</TranslateAnimation>
-			</Animations>
-		</AnimationTimeline>
-		<AnimationTimeline name="SlayerBarsDizzyRotate" playbackType="LOOP" loopCount="LOOP_INDEFINITELY">
-			<Animations>
-				<TextureAnimation cellsWide="2" cellsHigh="2" framerate="4" ></TextureAnimation>
-			</Animations>
-		</AnimationTimeline>
-		<AnimationTimeline name="SlayerBarsZoomIn">
-			<Animations>
-				<AlphaAnimation duration="300" startAlpha="0" endAlpha="1">
-					<OnPlay>
-						animatingControl:SetHidden(false)
-					</OnPlay>
-					<EasingFunction>
-						return ZO_EaseOutCubic(progress)
-					</EasingFunction>
-				</AlphaAnimation>
-				<ScaleAnimation duration="300" startScale="0" endScale="1"/>
-			</Animations>
-		</AnimationTimeline>
-        <AnimationTimeline name="SlayerBarsScroll" playbackType="LOOP" loopCount="LOOP_INDEFINITELY">
+    <Animations>
+        <AnimationTimeline name="SlayerBarsLeadingShineIdle" playbackType="PING_PONG" loopCount="LOOP_INDEFINITELY">
             <Animations>
-                <TextureSlideAnimation deltaU="-1" duration="10000"/>
+                <ScaleAnimation duration="800" startScale="1.12" endScale="0.9">
+                    <EasingFunction>
+                        return ZO_EaseOutQuartic(progress)
+                    </EasingFunction>
+                </ScaleAnimation>
             </Animations>
         </AnimationTimeline>
-	</Animations>
-	<Controls>
-		<Control name="SlayerBarStatusTemplate" virtual="true">
-			<Controls>
-				<StatusBar name="$(parent)Bar" inherits="ZO_DefaultStatusBar" textureFile="EsoUI/Art/UnitAttributeVisualizer/attributeBar_small_fill_center.dds" level="1">
-					<Dimensions y="15"/>
-					<Anchor point="TOPLEFT" relativeTo="$(parent)"/>
-					<Anchor point="BOTTOMRIGHT" relativeTo="$(parent)"/>
-					<LeadingEdge textureFile="SlayerBars/media/lead.dds" width="5"/>
-					<LeadingEdgeTextureCoords left="0" right="0.25390625" top="0" bottom="1"/>
-					<Controls>
-						<StatusBar name="$(parent)Gloss" hidden="true" override="true" level="6" textureFile=""></StatusBar>
-					</Controls>
-				</StatusBar>
-				<Label name="$(parent)StacksLabel" font="$(GAMEPAD_MEDIUM_FONT)|$(GP_22)|thick-outline" inherits="ZO_PlayerAttributeBarText" tier="HIGH" level="10">
-					<Anchor point="LEFT" relativeTo="$(parent)" relativePoint="LEFT" offsetX="7" offsetY="3" text="x10"/>
-				</Label>
-				<Label name="$(parent)ResourceNumbers" font="ZoFontGamepad22" inherits="ZO_PlayerAttributeBarText" tier="HIGH" level="10">
-					<Anchor point="RIGHT" relativeTo="$(parent)" relativePoint="RIGHT" offsetX="-10" offsetY="1"/>
-				</Label>
-				<StatusBar name="$(parent)Backlayer" level="0">
-					<TextureCoords left="0" right="1" top="0" bottom="0.75"/>
-					<Anchor point="TOPLEFT"/>
-					<Anchor point="BOTTOMRIGHT"/>
-				</StatusBar>
-				<Backdrop name="$(parent)BgBackdrop" layer="BACKGROUND" level="3" inherits="ZO_DarkThinFrame"/>
-				<Texture name="$(parent)Leadshine" textureFile="SlayerBars/media/lead.dds" tier="HIGH" level="19">
-					<Dimensions x="20" y="52"/>
-					<Anchor point="CENTER" relativeTo="$(parent)" relativePoint="LEFT"/>
-					<TextureCoords left="0.671875" right="1" top="0" bottom="1"/>
-				</Texture>
-				<Label name="$(parent)NameLabel" tier="HIGH" font="ZoFontHeader2" text="SI_OPTIONS_ENEMY_NPC_NAMEPLATE_GAMEPAD" color="f2e76b">
-					<Anchor point="BOTTOMRIGHT" relativeTo="$(parent)" relativePoint="TOPRIGHT" offsetY="-2" />
-				</Label>
-				<Texture name="$(parent)FlashOverlay" tier="HIGH" level="5" inherits="ZO_TintableBackground" color="000000" blendMode="COLOR_DODGE" addressMode="WRAP" autoAdjustTextureCoords="false">
-					<Anchor point="TOPLEFT" offsetX="-3" offsetY="-3"/>
-					<Anchor point="BOTTOMRIGHT" offsetX="3" offsetY="3"/>
-				</Texture>
-				<Texture name="$(parent)RightBracket" hidden="true" textureCoordsRotation="1.5708" textureFile="EsoUI/Art/Trials/trialPoints_verylow.dds" tier="HIGH" level="5" >
-					<Dimensions x="64" y="64" />
-					<Anchor point="CENTER" relativeTo="$(parent)" relativePoint="RIGHT" offsetX="7" />
-				</Texture>
-			</Controls>
-		</Control>
-		<Control name="SlayerBarCircleTemplate" virtual="true">
-			<Controls>
-				<Texture name="$(parent)FrameCircle" color="ccbc8f" TIER="HIGH" layer="CONTROLS" level="20" textureFile="SlayerBars/media/frame_metal_circle.dds" >
-					<Dimensions x="80" y="80"/>
-					<Anchor point="CENTER" />
-					<Controls>
-						<Texture name="$(parent)Inner" layer="CONTROLS" level="15">
-							<Dimensions x="80" y="80"/>
-							<Anchor point="CENTER" relativeTo="$(parent)" relativePoint="CENTER"/>
-						</Texture>
-					</Controls>
-				</Texture>
-			</Controls>
-		</Control>
-		<TopLevelControl name="SlayerBar" mouseEnabled="true" movable="false" clampedToScreen="true" hidden="true">
-			<Dimensions x="700" y="30"/>
-			<Anchor point="CENTER" relativeTo="GuiRoot" />
-			<Controls>
-				<Control name="$(parent)Main" inherits="SlayerBarStatusTemplate">
-					<Dimensions x="500" y="15"/>
-					<Anchor point="CENTER" relativeTo="$(parent)" relativePoint="CENTER"/>
-				</Control>
-				<Control name="$(parent)Tracker" inherits="SlayerBarCircleTemplate">
-					<Dimensions x="80" y="80"/>
-					<Anchor point="RIGHT" relativeTo="$(parent)Main" relativePoint="LEFT" offsetX="1"/>
-				</Control>
-				<Texture name="$(parent)DiamondIndicator" hidden="true" color="FF0000" layer="OVERLAY" TIER="HIGH" level="20" textureFile="SlayerBars/media/reddiamond.dds">
-					<Dimensions x="100" y="50"/>
-					<Anchor point="CENTER" relativeTo="$(parent)Tracker" relativePoint="CENTER"/>
-				</Texture>
-				<Texture name="$(parent)IconDemon" hidden="true" color="F0e83b27" layer="OVERLAY" TIER="HIGH" level="21" textureFile="SlayerBars/media/icon_demon.dds">
-					<Dimensions x="90" y="90"/>
-					<Anchor point="CENTER" relativeTo="$(parent)Tracker" relativePoint="CENTER"/>
-				</Texture>
-				<Texture name="$(parent)IconDemonGlow" color="F0e83b27" layer="OVERLAY" TIER="HIGH" level="19" textureFile="SlayerBars/media/icon_demon_glow.dds">
-					<Dimensions x="90" y="90"/>
-					<Anchor point="CENTER" relativeTo="$(parent)Tracker" relativePoint="CENTER"/>
-				</Texture>
-				<Texture name="$(parent)IconDizzyStars" hidden="true" color="f2e76b" layer="OVERLAY" TIER="HIGH" level="19" textureFile="SlayerBars/media/dizzystars.dds">
-					<Dimensions x="90" y="90"/>
-					<Anchor point="CENTER" relativeTo="$(parent)Tracker" relativePoint="CENTER" offsetY="-10"/>
-				</Texture>
-				<Texture name="$(parent)InkBg" hidden="true" color="CC000000" layer="BACKGROUND" textureFile="SlayerBars/media/ink.dds" >
-					<Dimensions x="550" y="100"/>
-					<Anchor point="RIGHT" relativeTo="$(parent)Main" relativePoint="RIGHT" offsetX="40" offsetY="-8" />
-					<Controls>
-						<StatusBar name="$(parent)OffBalance" hidden="true" layer="BACKGROUND" color="FFFFFF" level="2" textureFile="SlayerBars/media/ink.dds" >
-							<Dimensions x="550" y="100"/>
-							<Anchor point="RIGHT" relativeTo="$(parent)InkBg" relativePoint="RIGHT" />
-						</StatusBar>
-					</Controls>
-				</Texture>
-			</Controls>
-			<OnMoveStop>
-				SlayerBars.OnMoveStop(self)
-			</OnMoveStop>
-		</TopLevelControl>
-		<TopLevelControl name="SlayerBarsOtherBars" mouseEnabled="true" movable="false" clampedToScreen="true" hidden="true">
-			<Anchor point="CENTER" relativeTo="GuiRoot" />
-			<OnMoveStop>
-				SlayerBars.OnMoveStop(self)
-			</OnMoveStop>
-		</TopLevelControl>
-	</Controls>
+        <AnimationTimeline name="SlayerBarsHitIndicatorAnimation">
+            <Animations>
+                <ColorAnimation duration="750" startColor="E6f55718" endColor="FFfffbe2">
+                    <EasingFunction>
+                        return ZO_EaseOutQuadratic(progress)
+                    </EasingFunction>
+                </ColorAnimation>
+                <ScaleAnimation duration="150" startScale="1.6" endScale="1.0" />
+            </Animations>
+        </AnimationTimeline>
+        <AnimationTimeline name="SlayerBarsLeadFollowAnimation">
+            <Animations>
+                <TranslateAnimation duration="500" deltaX="225" deltaY="0" anchorIndex="0">
+                    <EasingFunction>
+                        return ZO_EaseOutCubic(progress)
+                    </EasingFunction>
+                </TranslateAnimation>
+            </Animations>
+        </AnimationTimeline>
+        <AnimationTimeline name="SlayerBarsZoomOut">
+            <Animations>
+                <AlphaAnimation duration="300" startAlpha="1" endAlpha="0">
+                    <OnPlay>
+                        animatingControl:SetHidden(false)
+                    </OnPlay>
+                    <OnStop>
+                        animatingControl:SetHidden(true)
+                    </OnStop>
+                    <EasingFunction>
+                        return ZO_EaseOutCubic(progress)
+                    </EasingFunction>
+                </AlphaAnimation>
+                <ScaleAnimation duration="300" startScale="1" endScale="2"/>
+            </Animations>
+        </AnimationTimeline>
+        <AnimationTimeline name="SlayerBarsUIShake">
+            <Animations>
+                <TranslateAnimation duration="100" deltaX="0" deltaY="-4" >
+                    <EasingFunction>
+                        return ZO_EaseOutQuadratic(progress)
+                    </EasingFunction>
+                </TranslateAnimation>
+                <TranslateAnimation delay="100" duration="100" deltaX="3" deltaY="8" ></TranslateAnimation>
+                <TranslateAnimation delay="200" duration="100" deltaX="-5" deltaY="-6" ></TranslateAnimation>
+                <TranslateAnimation delay="300" duration="100" deltaX="4" deltaY="4" ></TranslateAnimation>
+                <TranslateAnimation delay="400" duration="100" deltaX="-2" deltaY="-2" >
+                    <EasingFunction>
+                        return ZO_EaseOutQuadratic(progress)
+                    </EasingFunction>
+                </TranslateAnimation>
+            </Animations>
+        </AnimationTimeline>
+        <AnimationTimeline name="SlayerBarsDizzyRotate" playbackType="LOOP" loopCount="LOOP_INDEFINITELY">
+            <Animations>
+                <TextureAnimation cellsWide="2" cellsHigh="2" framerate="4" ></TextureAnimation>
+            </Animations>
+        </AnimationTimeline>
+        <AnimationTimeline name="SlayerBarsZoomIn">
+            <Animations>
+                <AlphaAnimation duration="300" startAlpha="0" endAlpha="1">
+                    <OnPlay>
+                        animatingControl:SetHidden(false)
+                    </OnPlay>
+                    <EasingFunction>
+                        return ZO_EaseOutCubic(progress)
+                    </EasingFunction>
+                </AlphaAnimation>
+                <ScaleAnimation duration="300" startScale="0" endScale="1"/>
+            </Animations>
+        </AnimationTimeline>
+        <AnimationTimeline name="SlayerBarsScroll" playbackType="LOOP" loopCount="LOOP_INDEFINITELY">
+            <Animations>
+                <TextureSlideAnimation deltaU="-1" duration="20000"/>
+            </Animations>
+        </AnimationTimeline>
+    </Animations>
+    <Controls>
+        <Control name="SlayerBarStatusTemplate" virtual="true">
+            <Controls>
+                <StatusBar name="$(parent)Bar" inherits="ZO_DefaultStatusBar" textureFile="EsoUI/Art/UnitAttributeVisualizer/attributeBar_small_fill_center.dds" level="2">
+                    <Dimensions y="15"/>
+                    <Anchor point="TOPLEFT" relativeTo="$(parent)"/>
+                    <Anchor point="BOTTOMRIGHT" relativeTo="$(parent)"/>
+                    <LeadingEdge textureFile="SlayerBars/media/lead.dds" width="5"/>
+                    <LeadingEdgeTextureCoords left="0" right="0.25390625" top="0" bottom="1"/>
+                    <Controls>
+                        <StatusBar name="$(parent)Gloss" hidden="true" override="true" level="3" textureFile=""></StatusBar>
+                    </Controls>
+                </StatusBar>
+                <Label name="$(parent)StacksLabel" font="$(GAMEPAD_MEDIUM_FONT)|$(GP_22)|thick-outline" inherits="ZO_PlayerAttributeBarText" tier="HIGH" level="4">
+                    <Anchor point="LEFT" relativeTo="$(parent)" relativePoint="LEFT" offsetX="7" offsetY="3" text="x10"/>
+                </Label>
+                <Label name="$(parent)ResourceNumbers" font="ZoFontGamepad22" inherits="ZO_PlayerAttributeBarText" tier="HIGH" level="4">
+                    <Anchor point="RIGHT" relativeTo="$(parent)" relativePoint="RIGHT" offsetX="-10" offsetY="1"/>
+                </Label>
+                <StatusBar name="$(parent)Backlayer" level="1">
+                    <TextureCoords left="0" right="1" top="0" bottom="0.75"/>
+                    <Anchor point="TOPLEFT"/>
+                    <Anchor point="BOTTOMRIGHT"/>
+                </StatusBar>
+                <Backdrop name="$(parent)BgBackdrop" layer="BACKGROUND" level="0" inherits="ZO_DarkThinFrame"/>
+                <Texture name="$(parent)Leadshine" textureFile="SlayerBars/media/lead.dds" tier="HIGH" level="10">
+                    <Dimensions x="20" y="52"/>
+                    <Anchor point="CENTER" relativeTo="$(parent)" relativePoint="LEFT"/>
+                    <TextureCoords left="0.671875" right="1" top="0" bottom="1"/>
+                </Texture>
+                <Label name="$(parent)NameLabel" tier="HIGH" font="ZoFontHeader2" text="SI_OPTIONS_ENEMY_NPC_NAMEPLATE_GAMEPAD" color="f2e76b">
+                    <Anchor point="BOTTOMRIGHT" relativeTo="$(parent)" relativePoint="TOPRIGHT" offsetY="-2" />
+                </Label>
+                <Texture name="$(parent)FlashOverlay" layer="CONTROLS" tier="HIGH" level="5" inherits="ZO_TintableBackground" color="000000" blendMode="COLOR_DODGE" addressMode="WRAP" autoAdjustTextureCoords="false">
+                    <Anchor point="TOPLEFT" offsetX="-3" offsetY="-3"/>
+                    <Anchor point="BOTTOMRIGHT" offsetX="3" offsetY="3"/>
+                </Texture>
+                <Texture name="$(parent)RightBracket" hidden="true" textureCoordsRotation="1.5708" textureFile="EsoUI/Art/Trials/trialPoints_verylow.dds" tier="HIGH" level="5" >
+                    <Dimensions x="64" y="64" />
+                    <Anchor point="CENTER" relativeTo="$(parent)" relativePoint="RIGHT" offsetX="7" />
+                </Texture>
+            </Controls>
+        </Control>
+        <Control name="SlayerBarCircleTemplate" virtual="true">
+            <Controls>
+                <Texture name="$(parent)FrameCircle" color="ccbc8f" TIER="HIGH" layer="CONTROLS" level="20" textureFile="SlayerBars/media/frame_metal_circle.dds" >
+                    <Dimensions x="80" y="80"/>
+                    <Anchor point="CENTER" />
+                    <Controls>
+                        <Texture name="$(parent)Inner" level="15">
+                            <Dimensions x="80" y="80"/>
+                            <Anchor point="CENTER" relativeTo="$(parent)" relativePoint="CENTER"/>
+                        </Texture>
+                    </Controls>
+                </Texture>
+            </Controls>
+        </Control>
+        <TopLevelControl name="SlayerBar" mouseEnabled="true" movable="false" clampedToScreen="true" hidden="true">
+            <Dimensions x="700" y="30"/>
+            <Anchor point="CENTER" relativeTo="GuiRoot" />
+            <Controls>
+                <Control name="$(parent)Main" inherits="SlayerBarStatusTemplate">
+                    <Dimensions x="500" y="15"/>
+                    <Anchor point="CENTER" relativeTo="$(parent)" relativePoint="CENTER"/>
+                </Control>
+                <Control name="$(parent)Tracker" inherits="SlayerBarCircleTemplate">
+                    <Dimensions x="80" y="80"/>
+                    <Anchor point="RIGHT" relativeTo="$(parent)Main" relativePoint="LEFT" offsetX="1"/>
+                    <Controls>
+                        <Texture name="$(parent)DiamondIndicator" hidden="true" color="FF0000" layer="OVERLAY" TIER="HIGH" level="50" textureFile="SlayerBars/media/reddiamond.dds">
+                        <Dimensions x="100" y="50"/>
+                        <Anchor point="CENTER" relativeTo="$(parent)" relativePoint="CENTER"/>
+                        </Texture>
+                        <Texture name="$(parent)IconDemon" hidden="true" color="F0e83b27" layer="OVERLAY" TIER="HIGH" level="21" textureFile="SlayerBars/media/icon_demon.dds">
+                        <Dimensions x="90" y="90"/>
+                        <Anchor point="CENTER" relativeTo="$(parent)" relativePoint="CENTER"/>
+                        </Texture>
+                        <Texture name="$(parent)IconDemonGlow" color="F0e83b27" layer="OVERLAY" TIER="HIGH" level="19" textureFile="SlayerBars/media/icon_demon_glow.dds">
+                        <Dimensions x="90" y="90"/>
+                        <Anchor point="CENTER" relativeTo="$(parent)" relativePoint="CENTER"/>
+                        </Texture>
+                        <Texture name="$(parent)IconDizzyStars" hidden="true" color="f2e76b" layer="OVERLAY" TIER="HIGH" level="19" textureFile="SlayerBars/media/dizzystars.dds">
+                        <Dimensions x="90" y="90"/>
+                        <Anchor point="CENTER" relativeTo="$(parent)" relativePoint="CENTER" offsetY="-10"/>
+                        </Texture>
+                    </Controls>
+                </Control>
+                <Texture name="$(parent)InkBg" hidden="true" color="CC000000" layer="BACKGROUND" textureFile="SlayerBars/media/ink.dds" >
+                    <Dimensions x="550" y="100"/>
+                    <Anchor point="RIGHT" relativeTo="$(parent)Main" relativePoint="RIGHT" offsetX="40" offsetY="-8" />
+                    <Controls>
+                        <StatusBar name="$(parent)OffBalance" hidden="true" layer="BACKGROUND" color="FFFFFF" level="2" textureFile="SlayerBars/media/ink.dds" >
+                            <Dimensions x="550" y="100"/>
+                            <Anchor point="RIGHT" relativeTo="$(parent)InkBg" relativePoint="RIGHT" />
+                        </StatusBar>
+                    </Controls>
+                </Texture>
+            </Controls>
+            <OnMoveStop>
+                SlayerBars.OnMoveStop(self)
+            </OnMoveStop>
+        </TopLevelControl>
+        <TopLevelControl name="SlayerBarsOtherBars" mouseEnabled="true" movable="false" clampedToScreen="true" hidden="true">
+            <Anchor point="CENTER" relativeTo="GuiRoot" />
+            <OnMoveStop>
+                SlayerBars.OnMoveStop(self)
+            </OnMoveStop>
+        </TopLevelControl>
+    </Controls>
 </GuiXml>

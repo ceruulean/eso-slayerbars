@@ -5,6 +5,7 @@ local panelName = "SlayerBarsSettingsPanel"
 
 local LMP = LibMediaProvider or {}
 local is_previewing = false
+local is_previewing_twins = false
 
 function GetTableKeys(tab)
     local keyset = {}
@@ -43,7 +44,7 @@ local BAR_TEXT_CHOICES = {
     "Flat",
     "Healbot",
     "Inner Glow",
-	"Inner Shadow",
+    "Inner Shadow",
     "Inner Shadow Glossy",
     "Minimalistic",
     "Outline",
@@ -87,13 +88,13 @@ local ADD_BOSS_DISPLAY_CHOICES = GetTableValues(ADD_BOSS_DISPLAY)
 local RESOURCE_NUMBER_FORMATS = {RESOURCE_NUMBERS_SETTING_OFF, RESOURCE_NUMBERS_SETTING_NUMBER_ONLY, RESOURCE_NUMBERS_SETTING_PERCENT_ONLY, RESOURCE_NUMBERS_SETTING_NUMBER_AND_PERCENT}
 local RESOURCE_NUMBER_CHOICES = {}
 for i=1, #RESOURCE_NUMBER_FORMATS do
-	table.insert(RESOURCE_NUMBER_CHOICES, GetString("SI_RESOURCENUMBERSSETTING", RESOURCE_NUMBER_FORMATS[i]))
+    table.insert(RESOURCE_NUMBER_CHOICES, GetString("SI_RESOURCENUMBERSSETTING", RESOURCE_NUMBER_FORMATS[i]))
 end
 
 
 local savedVersion = 1
 local DEFAULTS = {
-	debugMode = false,
+    debugMode = false,
     targetBarTex = "Inner Shadow Glossy",
     targetBacklayerTex = "Cilo",
     backdropStyle = BACKDROP_CHOICES[1],
@@ -102,12 +103,12 @@ local DEFAULTS = {
     primaryBarHeight = 25,
     primaryNameFont = {"Univers 67", 20, "soft-shadow-thick"},
     primaryResourceFont = {"Futura Condensed", 22, "soft-shadow-thick"},
-	primaryResourceNumberFormat = RESOURCE_NUMBERS_SETTING_NUMBER_AND_PERCENT,
+    primaryResourceNumberFormat = RESOURCE_NUMBERS_SETTING_NUMBER_AND_PERCENT,
     addBossDisplayLayout = SB.Settings.ADD_BOSS_DISPLAY_COMPACT,
     addBossBarWidth = 500,
     addBossBarHeight = 20,
     addBossNameFont = {"Univers 67", 18, "soft-shadow-thick"},
-	addBossResourceNumberFormat = RESOURCE_NUMBERS_SETTING_OFF,
+    addBossResourceNumberFormat = RESOURCE_NUMBERS_SETTING_OFF,
 
 }
 
@@ -244,18 +245,35 @@ local optionsData = {
         name = "Primary Boss Bar",
         tooltip = "Adjust the primary boss bar.",
         controls = {
-			{
-				type = "button",
-				name = "Preview Stacks",
-				tooltip = "Preview stack colors",
-				func = function()
-					if is_previewing then
-						HidePreviewBars()
-					else
-						ShowPreviewBars()
-					end
-				end,
-			},
+            {
+                type = "button",
+                name = "Preview Twins",
+                tooltip = "Preview twin bars",
+                func = function()
+                    if is_previewing_twins then
+                       SB.OnBossesChanged(_, true)
+                       SB.Unlock(SB.is_unlocked)
+                    else
+                        SB.enemyTracker.twinFight = true
+                        SB.UpdateDisplayLayout()
+                    end
+                    is_previewing_twins = not is_previewing_twins
+                end,
+                width = "half"
+            },
+            {
+                type = "button",
+                name = "Preview Stacks",
+                tooltip = "Preview stack colors",
+                func = function()
+                    if is_previewing then
+                        HidePreviewBars()
+                    else
+                        ShowPreviewBars()
+                    end
+                end,
+                width = "half"
+            },
             {
                 type = "slider",
                 name = "Bar Width",
@@ -323,7 +341,7 @@ local optionsData = {
             {
                 type = "dropdown",
                 name = GetString(SI_INTERFACE_OPTIONS_RESOURCE_NUMBERS),
-				tooltip = "Format of health amount",
+                tooltip = "Format of health amount",
                 getFunc = function()
                     return SB.sv.primaryResourceNumberFormat
                 end,
@@ -333,7 +351,7 @@ local optionsData = {
                 end,
                 choices = RESOURCE_NUMBER_CHOICES,
                 choicesValues = RESOURCE_NUMBER_FORMATS,
-				default = DEFAULTS.primaryResourceNumberFormat,
+                default = DEFAULTS.primaryResourceNumberFormat,
                 width = "full"
             },
         }
@@ -426,7 +444,7 @@ local optionsData = {
             {
                 type = "dropdown",
                 name = GetString(SI_INTERFACE_OPTIONS_RESOURCE_NUMBERS),
-				tooltip = "Format of health amount",
+                tooltip = "Format of health amount",
                 getFunc = function()
                     return SB.sv.addBossResourceNumberFormat
                 end,
@@ -436,11 +454,11 @@ local optionsData = {
                 end,
                 choices = RESOURCE_NUMBER_CHOICES,
                 choicesValues = RESOURCE_NUMBER_FORMATS,
-				default = DEFAULTS.addBossResourceNumberFormat,
+                default = DEFAULTS.addBossResourceNumberFormat,
                 width = "full"
             },
         },
-		-- reference = "MyAddonSubmenu"
+        -- reference = "MyAddonSubmenu"
     },
 }
 function SlayerBars.InitSettingsMenu()
@@ -476,6 +494,8 @@ function SlayerBars.InitSettingsMenu()
             end
             HidePreviewBars()
             is_previewing = false
+            is_previewing_twins = false
+            SB.OnBossesChanged(_, true)
             SB.UpdateAllBars()
         end
     )
