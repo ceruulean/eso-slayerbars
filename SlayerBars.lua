@@ -1,33 +1,18 @@
-local LMP = LibMediaProvider
-SlayerBars = {
-    name = "SlayerBars",
-    displayName = "Slayer Bars",
-    version = "0.1",
-    is_unlocked = false,
-    ability = {},
-    Anim = {},
-    instantiatedBars = {},
-    STATE = {
-        OOC_IDLE = 0,
-        COMBAT_IDLE = 1,
-        DIZZY = 2,
-        TAUNTED = 3,
-        TAUNT_SOON = 4,
-        UNTAUNTED = 5
-    }
-}
--- Modules --
-SlayerBars.Utils = {}
-local Utils = SlayerBars.Utils
+SlayerBars = SlayerBars or {}
 local SB = SlayerBars
-SB.currentState = SB.STATE.OOC_IDLE
-local primary_bar_frag
+local LMP = LibMediaProvider
 
+SB.is_unlocked = false
+SB.Anim = {}
+SB.instantiatedBars = {}
+-- Modules --
+SlayerBars.Util = {}
+local Util = SlayerBars.Util
+
+SB.primary_bar_frag = nil
+SB.other_bars_frag = nil
+local boss1 = "boss1"
 local PRIMARY_BAR = nil
-local ANIM = {
-    OBShake = nil,
-    DizzyRotate = nil
-}
 
 local EPSILON = 0.0001
 local PEEL_COLORS_COUNT = 10
@@ -44,128 +29,6 @@ local PEEL_COLORS = {
     {ZO_ColorDef:New("f7e739"), ZO_ColorDef:New("f2e76b")}
 }
 
-local OB_NAME
-local OB_IMMUNE_NAME
-local function RegisterAbilities()
-    -- from untaunted mod....
-    local AbilityCopies = {
-        -- Minor Vulnerability
-        [81519] = {
-            51434,
-            61782,
-            68359,
-            79715,
-            79717,
-            79720,
-            79723,
-            79726,
-            79843,
-            79844,
-            79845,
-            79846,
-            117025,
-            118613,
-            120030,
-            124803,
-            124804,
-            124806,
-            130155,
-            130168,
-            130173,
-            130809
-        },
-        -- Minor Lifesteal
-        [80020] = {86304, 86305, 86307, 88565, 88575, 88606, 92653, 121634, 148043},
-        -- Minor Fracture
-        [64144] = {79090, 79091, 79309, 79311, 60416, 84358},
-        -- Minor Breach
-        [68588] = {38688, 61742, 83031, 84358, 108825, 120019, 126685, 146908},
-        -- Off Balance
-        [62988] = {
-            62968,
-            39077,
-            130145,
-            130129,
-            130139,
-            45902,
-            25256,
-            34733,
-            34737,
-            23808,
-            20806,
-            34117,
-            125750,
-            131562,
-            45834,
-            137257,
-            137312,
-            120014
-        },
-        -- Off Balance Immunity
-        [134599] = {},
-        -- Major Breach
-        [62787] = {
-            28307,
-            33363,
-            34386,
-            36972,
-            36980,
-            40254,
-            48946,
-            53881,
-            61743,
-            62474,
-            62485,
-            62775,
-            78609,
-            85362,
-            91175,
-            91200,
-            100988,
-            108951,
-            111788,
-            117818,
-            118438,
-            120010
-        },
-        -- Major Vulnerability
-        [122389] = {106754, 106755, 106758, 106760, 106762, 122177, 122397},
-        -- Minor Magickasteal
-        [39100] = {26220, 26809, 88401, 88402, 88576, 125316, 148044},
-        -- Taunt
-        [38541] = {38254}
-    }
-
-    SB.ability[62988] = GetAbilityName(62988)
-    SB.ability[134599] = GetAbilityName(134599)
-    OB_NAME = SB.ability[62988]
-    OB_IMMUNE_NAME = SB.ability[134599]
-end
-
-local OB_EFFECTS = {
-    icon = "/esoui/art/icons/ability_debuff_offbalance.dds",
-    ob_ids = {62988},
-    ob_immun_ids = {134599}
-}
-
-local currentReticleUnitId = nil
-SB.enemyTracker = {
-    byId = {}, -- [unitId] = { effects... }
-    bossMap = {}, -- ["boss1"] = unitId
-    bossHealth = {},
-    twinFight = false
-}
-local enemyTracker = SB.enemyTracker
-
-local function TableContains(tab, val)
-    for key, value in pairs(tab) do
-        if value == val then
-            return true -- Found the value
-        end
-    end
-    return false -- Value not found
-end
-
 local StackedBar = ZO_Object:Subclass()
 
 function StackedBar:New(...)
@@ -178,7 +41,7 @@ function StackedBar:Initialize(unitTag, existingControl, parentControl)
     self.unitTag = unitTag
     self.control =
         existingControl or
-        CreateControlFromVirtual("SB_Stacked" .. unitTag, parentControl or SlayerBar, "SlayerBarStatusTemplate")
+        CreateControlFromVirtual(ZO_Gamepad_TempVirtualKeyboardGenRandomString("SB", 9), parentControl or SlayerBar, "SlayerBarStatusTemplate")
     local ctrl = self.control
 
     self.bar = ctrl:GetNamedChild("Bar")
@@ -189,42 +52,22 @@ function StackedBar:Initialize(unitTag, existingControl, parentControl)
 
     self.backlayer = ctrl:GetNamedChild("Backlayer")
     self.stacksLabel = ctrl:GetNamedChild("StacksLabel")
-    self.unitName = Utils.GetNameOrDefault(unitTag)
+    self.unitName = Util.GetNameOrDefault(unitTag)
     self.nameLabel = ctrl:GetNamedChild("NameLabel")
 
-    -- SlayerBarNameLabel:SetFont("LuiMedia/media/fonts/Adventure/adventure.slug|22|thick-outline")
     self.barContainer = ctrl:GetNamedChild("BarContainer")
-    self.shakeAnim = ANIMATION_MANAGER:CreateTimelineFromVirtual("SlayerBarsUIShake", ctrl)
-
-    local fo = ctrl:GetNamedChild("FlashOverlay")
-    self.overlay = fo
-    self.flashAnim = ANIMATION_MANAGER:CreateTimelineFromVirtual("SlayerBarsHitIndicatorAnimation", fo)
-    self.flashAnim:SetHandler(
-        "OnPlay",
-        function()
-            fo:SetHidden(false)
-        end
-    )
-    self.flashAnim:SetHandler(
-        "OnStop",
-        function()
-            fo:SetHidden(true)
-        end
-    )
-    self.flashAnim:SetPlaybackType(ANIMATION_PLAYBACK_PING_PONG)
-    self.flashAnim:SetPlaybackLoopCount(1)
-    self.flashAnim:GetAnimation(1):SetDuration(300)
-
-    self.overlayScrollAnim = ANIMATION_MANAGER:CreateTimelineFromVirtual("SlayerBarsScroll", fo)
+    self.overlay = ctrl:GetNamedChild("FlashOverlay")
+    self.overlayScrollAnim = ANIMATION_MANAGER:CreateTimelineFromVirtual("SlayerBarsScroll", self.overlay)
     -- self.overlayScrollAnim:GetAnimation(1):SetDuration(5000)
 end
 
 function StackedBar:RegisterUnit(unitTag)
     self.unitTag = unitTag
+    local controlName = self.control:GetName()
     if unitTag ~= nil then
         self.onPowerUpdateHandler =
             ZO_MostRecentPowerUpdateHandler:New(
-            "SB" .. unitTag,
+            "SB" .. controlName,
             function(...)
                 self:OnPowerUpdate(...)
             end
@@ -238,28 +81,29 @@ function StackedBar:RegisterUnit(unitTag)
             self:OnUnitAttributeVisualAdded(...)
         end
     )
-    self.control:AddFilterForEvent(EVENT_UNIT_ATTRIBUTE_VISUAL_ADDED, REGISTER_FILTER_UNIT_TAG, self.unitTag)
+    self.control:AddFilterForEvent(EVENT_UNIT_ATTRIBUTE_VISUAL_ADDED, REGISTER_FILTER_UNIT_TAG, unitTag)
     self.control:RegisterForEvent(
         EVENT_UNIT_ATTRIBUTE_VISUAL_UPDATED,
         function(...)
             self:OnUnitAttributeVisualUpdated(...)
         end
     )
-    self.control:AddFilterForEvent(EVENT_UNIT_ATTRIBUTE_VISUAL_UPDATED, REGISTER_FILTER_UNIT_TAG, self.unitTag)
+    self.control:AddFilterForEvent(EVENT_UNIT_ATTRIBUTE_VISUAL_UPDATED, REGISTER_FILTER_UNIT_TAG, unitTag)
     self.control:RegisterForEvent(
         EVENT_UNIT_ATTRIBUTE_VISUAL_REMOVED,
         function(...)
             self:OnUnitAttributeVisualRemoved(...)
         end
     )
-    self.control:AddFilterForEvent(EVENT_UNIT_ATTRIBUTE_VISUAL_REMOVED, REGISTER_FILTER_UNIT_TAG, self.unitTag)
+    self.control:AddFilterForEvent(EVENT_UNIT_ATTRIBUTE_VISUAL_REMOVED, REGISTER_FILTER_UNIT_TAG, unitTag)
 end
 
-function StackedBar:UnregisterUnit()
+function StackedBar:Unregister()
     if self.onPowerUpdateHandler == nil then
         return
     end
-    --EVENT_MANAGER:UnregisterForEvent("SB"..self.unitTag, EVENT_POWER_UPDATE)
+    local namespace = self.onPowerUpdateHandler.namespace
+    EVENT_MANAGER:UnregisterForEvent(namespace, EVENT_POWER_UPDATE)
     self.control:UnregisterForEvent(EVENT_UNIT_ATTRIBUTE_VISUAL_ADDED)
     self.control:UnregisterForEvent(EVENT_UNIT_ATTRIBUTE_VISUAL_UPDATED)
     self.control:UnregisterForEvent(EVENT_UNIT_ATTRIBUTE_VISUAL_REMOVED)
@@ -271,32 +115,23 @@ function StackedBar:ImpactShake()
 end
 
 function StackedBar:EnableLeadshine()
-    self.leadshine = self.control:GetNamedChild("Leadshine")
-    self.leadshine:SetHidden(false)
+    self.leadshine = self.leadshine or self.control:GetNamedChild("Leadshine")
     self.leadshineIdle = self.leadshineIdle or ANIMATION_MANAGER:CreateTimelineFromVirtual("SlayerBarsLeadingShineIdle", self.leadshine)
-    self.leadshineHitAnim = self.leadshineHitAnim or
-        ANIMATION_MANAGER:CreateTimelineFromVirtual("SlayerBarsHitIndicatorAnimation", self.leadshine)
+    self.leadshine:SetHidden(false)
     self.leadshineIdle:PlayFromStart()
-    -- dummy event since there's no way to detect boss hit, would have to do combt event instead
-    -- self.control:RegisterForEvent(EVENT_IMPACTFUL_HIT, function(_, ...) self:OnImpactfulHit(...) end )
-    -- Player -> Target
-    -- self.control:AddFilterForEvent(EVENT_COMBAT_EVENT, REGISTER_FILTER_SOURCE_COMBAT_UNIT_TYPE, COMBAT_UNIT_TYPE_PLAYER)
+    self.leadshineHitAnim = self.leadshineHitAnim or ANIMATION_MANAGER:CreateTimelineFromVirtual("SlayerBarsHitIndicatorAnimation", self.leadshine)
+    self.leadHit = self.leadHit or 
+        Util.Debounce(function()
+            self.leadshineHitAnim:PlayFromStart()
+        end, 800)
 end
 
 function StackedBar:DisableLeadshine()
-    self.control:GetNamedChild("Leadshine"):SetHidden(true)
-    self.leadshine = nil
-    self.control:UnregisterForEvent(EVENT_COMBAT_EVENT)
+    if self.leadshine then self.leadshine:SetHidden(true) end
 end
 
-function SB.OnCombatEvent(eventid, result, isError, abilityName, abilityGraphic, abilityActionSlotType, sourceName, sourceType, targetName, targetType, hitValue, powerType, damageType, log, sourceUnitId, targetUnitId, abilityId, overflow)
-    -- if self.unitName == targetName then d("traget: "..targetName) end
-    if
-        sourceType == COMBAT_UNIT_TYPE_PLAYER and
-            (result == ACTION_RESULT_CRITICAL_DAMAGE or result == ACTION_RESULT_DOT_TICK_CRITICAL)
-     then
-        PRIMARY_BAR.leadHit()
-    end
+function StackedBar:LeadIsHidden()
+    return (not self.leadshine or self.leadshine:IsHidden())
 end
 
 function StackedBar:SetStacks(count)
@@ -304,56 +139,29 @@ function StackedBar:SetStacks(count)
     self.bucketWidth = self.stacks / PEEL_COLORS_COUNT
 end
 
-function StackedBar:UpdateDifficulty()
-    local stacks
-    if self.primary then
-        local current, maxhp, effmax = GetUnitPower(self.unitTag, POWERTYPE_HEALTH)
-        if GetUnitType(self.unitTag) == 12 then -- target dummy
-            stacks = 5
-        else
-            local difficulty = GetUnitDifficulty(self.unitTag)
-            if difficulty and difficulty >= MONSTER_DIFFICULTY_DEADLY then
-                stacks = (maxhp > 100000000) and 10 or 5
-            else
-                stacks = 1
-            end
-        end
-        if DoesUnitExist(self.unitTag) then
-            self:OnPowerUpdate(self.unitTag, _, POWERTYPE_HEALTH, current, maxhp, effmax)
-        end
-    else
-        stacks = 1
-    end
-    self:SetStacks(stacks)
-    self:UpdateStyle()
-end
-
 function StackedBar:OnPowerUpdate(unitTag, powerIndex, powerType, powerValue, powerMax, powerEffectiveMax)
     if unitTag ~= self.unitTag then
         return
     end
-    enemyTracker.bossHealth[unitTag] = { hp = powerValue, maxhp = powerMax }
-    if self._lastPowerMax ~= powerMax or self._lastUnitName ~= self.unitName then
-        self._lastUnitName = self.unitName
-        self.unitName = Utils.GetNameOrDefault(unitTag)
-        self.nameLabel:SetText(self.unitName)
+    if self._lastPowerMax ~= powerMax then
+        -- self._lastUnitName = self.unitName
         self:SetMinMax(0, powerMax)
     end
     self.uavInfo = {GetAllUnitAttributeVisualizerEffectInfo(unitTag)}
     -- { uav, statType, attributeType, powerType, value, maxValue }
     if self.uavInfo[1] == ATTRIBUTE_VISUAL_UNWAVERING_POWER then
-        self.uavImmune = true
-        self:SetImmuneVisual()
+        self.uavInvuln = true
+        self:SetInvulnVisual()
     else
-        self.uavImmune = false
+        self.uavInvuln = false
     end
     self:SetValue(powerValue)
 end
 
 function StackedBar:SetMinMax(mn, mx)
-    self._lastPowerMax = mx
-    self.powerMax = mx
-    self.bar:SetMinMax(mn, mx)
+    self.powerMax = mx or 1
+    self._lastPowerMax = self.powerMax
+    self.bar:SetMinMax(mn, self.powerMax)
 end
 
 function StackedBar:SetResourceFormat(enum)
@@ -412,14 +220,7 @@ local function AcquireAnimation()
     return animation
 end
 
-local function LeadshineSmoothTransition(
-    self,
-    parent,
-    value,
-    maxWidth,
-    forceInit,
-    onStopCallback,
-    customApproachAmountMs)
+local function LeadshineSmoothTransition(self, parent, value, maxWidth, forceInit, onStopCallback, customApproachAmountMs)
     local oldValue = self._oldVal or value
     local oldMax = self.maxWidth or maxWidth
     self._oldVal = value
@@ -466,10 +267,10 @@ end
 
 function StackedBar:UpdateLeadshine(value, percentPos)
     local leadshine = self.leadshine
-    if not leadshine then
+    if not (leadshine or self.primary) then
         return
     end
-    local temphide = self.uavImmune and true or false
+    local temphide = self.uavInvuln and true or false
     local dead = value == 0
     leadshine:SetHidden(dead or temphide)
     LeadshineSmoothTransition(leadshine, self.bar, percentPos * self.barWidth, self.barWidth, false)
@@ -494,12 +295,12 @@ function StackedBar:UpdateResourceLabel(value, mx, force)
             string.format(
             "%s (%d%%)",
             ZO_AbbreviateAndLocalizeNumber(value, NUMBER_ABBREVIATION_PRECISION_TENTHS, false),
-            Utils.FormatPercent(value, mx)
+            Util.FormatPercent(value, mx)
         )
     elseif rnf == RESOURCE_NUMBERS_SETTING_NUMBER_ONLY then
         text = ZO_AbbreviateAndLocalizeNumber(value, NUMBER_ABBREVIATION_PRECISION_TENTHS, false)
     else
-        text = Utils.FormatPercent(value, mx) .. "%"
+        text = Util.FormatPercent(value, mx) .. "%"
     end
 
     self.resourceNumbers:SetText(text)
@@ -553,7 +354,7 @@ function StackedBar:SetValue(value, force)
         nextColor = nextColor - 1
     end
 
-    if colorIndex ~= self._lastColorIndex then
+    if (colorIndex ~= self._lastColorIndex) or force then
         self._lastColorIndex = colorIndex
         ZO_StatusBar_SetGradientColor(bar, PEEL_COLORS[colorIndex])
     end
@@ -570,20 +371,6 @@ function StackedBar:SetValue(value, force)
     self:UpdateResourceLabel(value, mx, force)
 end
 
-function StackedBar:UpdateStyle()
-    local FF = Utils.FormatFont
-    ApplyTemplateToControl(self.bgBackdrop, SB.sv.backdropStyle)
-    self.bar:SetTexture(LuiMedia.StatusbarTextures[SB.sv.targetBarTex])
-    self.backlayer:SetTexture(LuiMedia.StatusbarTextures[SB.sv.targetBacklayerTex])
-    if self.primary then
-        self.nameLabel:SetFont(FF(SB.sv.primaryNameFont))
-        self:SetResourceFormat(SB.sv.primaryResourceNumberFormat)
-    else
-        self.nameLabel:SetFont(FF(SB.sv.addBossNameFont))
-        self:SetResourceFormat(SB.sv.addBossResourceNumberFormat)
-    end
-end
-
 function StackedBar:ResetVisual()
     self.overlay:ClearAnchors()
     self.overlay:SetAnchor(TOPLEFT, nil, nil, -3, -3)
@@ -593,20 +380,23 @@ function StackedBar:ResetVisual()
     self.overlay:SetColor(0, 0, 0, 0)
     self.overlayScrollAnim:Stop()
     self.overlay:SetHidden(true)
+    if self.primary then
+        self.leadshine:SetHidden(false)
+    end
 end
 
-function StackedBar:SetImmuneVisual(bool)
+function StackedBar:SetInvulnVisual(bool)
     local b = (bool == nil) and true or bool
     if b then
         self.overlay:SetHidden(not b)
         self.overlay:SetTexture("SlayerBars/media/barber.dds")
         self.overlay:SetBlendMode()
-        self.overlay:SetColor(ZO_ColorDef:New("E655aabd"):UnpackRGBA())
+        self.overlay:SetColor(unpack(SB.sv.targetInvulnColor))
         self.overlay:ClearAnchors()
         self.overlay:SetAnchor(TOPLEFT, nil, nil, 0, 0)
         self.overlay:SetAnchor(BOTTOMRIGHT, nil, nil, 0, 0)
         self.overlayScrollAnim:PlayFromStart()
-        if self.leadshine then
+        if self.primary then
             self.leadshine:SetHidden(true)
         end
     else
@@ -614,58 +404,85 @@ function StackedBar:SetImmuneVisual(bool)
     end
 end
 
-function StackedBar:OnUnitAttributeVisualAdded(
-    _,
-    unitTag,
-    uav,
-    statType,
-    attributeType,
-    powerType,
-    value,
-    maxValue,
-    sequenceId)
+function StackedBar:SetUnitInfo(force)
+    local tag = self.unitTag
+    local current, maxhp, effmax = GetUnitPower(tag, POWERTYPE_HEALTH)
+    if (self._lastUnitName ~= self.unitName) or force then
+        self.unitName = Util.GetNameOrDefault(tag)
+        self.nameLabel:SetText(self.unitName)
+    end
+    SB.enemyTracker.bossHealth[tag] = { hp = current, maxhp = maxhp }
+    -- UpdateStacksEnemyType()
+    local stacks = 1
+    if self.primary then
+        if GetUnitType(tag) == 12 then -- target dummy
+            stacks = 5
+        else
+            local difficulty = GetUnitDifficulty(tag)
+            if difficulty and difficulty >= MONSTER_DIFFICULTY_DEADLY then
+                stacks = (maxhp > 100000000) and 10 or 5
+            end
+        end
+    end
+    self:SetStacks(stacks)
+    self:SetMinMax(0, maxhp)
+    self:SetValue(current, force)
+end
+
+--------------------------------------------------------------
+-- Update Functions
+--------------------------------------------------------------
+
+function StackedBar:AlignNameplate()
+    local padBottom = -2
+    local parent = self.nameLabel:GetParent()
+    self.nameLabel:ClearAnchors()
+    local a = SB.sv.nameAlignment
+    if a == 1 then -- Right
+       self.nameLabel:SetAnchor(BOTTOMLEFT, parent, TOPLEFT, 0, padBottom)
+    elseif a == 2 then -- center
+       self.nameLabel:SetAnchor(BOTTOM, parent, TOP, 0, padBottom)
+    else -- Left
+       self.nameLabel:SetAnchor(BOTTOMRIGHT, parent, TOPRIGHT, 0, padBottom)
+    end
+end
+
+function StackedBar:UpdateTexture()
+    ApplyTemplateToControl(self.bgBackdrop, SB.sv.backdropStyle)
+    self.bar:SetTexture(LuiMedia.StatusbarTextures[SB.sv.targetBarTex])
+    self.backlayer:SetTexture(LuiMedia.StatusbarTextures[SB.sv.targetBacklayerTex])
+end
+
+function StackedBar:UpdateUnitId(unitId)
+    if self.unitId ~= unitId then
+        self.unitId = unitId
+        self.nameLabel:SetText(string.format("[%d] %s", unitId, self.unitName))
+    end
+end
+
+function StackedBar:OnUnitAttributeVisualAdded(_, unitTag, uav, statType, attributeType, powerType, value, maxValue, sequenceId)
     if uav == ATTRIBUTE_VISUAL_UNWAVERING_POWER then
-        self:SetImmuneVisual()
+        self:SetInvulnVisual()
     end
     if uav == ATTRIBUTE_VISUAL_POWER_SHIELDING then
     end
 end
 
-function StackedBar:OnUnitAttributeVisualUpdated(
-    _,
-    unitTag,
-    uav,
-    statType,
-    attributeType,
-    powerType,
-    oldVal,
-    newVal,
-    oldMaxVal,
-    newMaxValue,
-    sequenceId)
+function StackedBar:OnUnitAttributeVisualUpdated( _, unitTag, uav, statType, attributeType, powerType, oldVal, newVal, oldMaxVal, newMaxValue, sequenceId)
     if uav == ATTRIBUTE_VISUAL_UNWAVERING_POWER then
         if newVal == 0 then
-            self.uavImmune = false
+            self.uavInvuln = false
             self:ResetVisual()
         else
-            self.uavImmune = true
-            self:SetImmuneVisual()
+            self.uavInvuln = true
+            self:SetInvulnVisual()
         end
     end
     if uav == ATTRIBUTE_VISUAL_POWER_SHIELDING then
     end
 end
 
-function StackedBar:OnUnitAttributeVisualRemoved(
-    _,
-    unitTag,
-    uav,
-    statType,
-    attributeType,
-    powerType,
-    value,
-    maxValue,
-    sequenceId)
+function StackedBar:OnUnitAttributeVisualRemoved(_, unitTag, uav, statType, attributeType, powerType, value, maxValue, sequenceId)
     if uav == ATTRIBUTE_VISUAL_UNWAVERING_POWER then
         self:ResetVisual()
     end
@@ -675,14 +492,17 @@ end
 
 function StackedBar:Show()
     --self:RegisterUnit(self.unitTag)
-    self:UpdateStyle()
+    self:UpdateTexture()
     self.control:SetHidden(false)
 end
 
 function StackedBar:Release()
-    -- self:UnregisterUnit()
     self.control:SetHidden(true)
 end
+
+--------------------------------------------------------------
+-- Top Level UI
+--------------------------------------------------------------
 
 function SB.ResetPosition()
     local heightUnit = SlayerBar:GetHeight()
@@ -692,217 +512,75 @@ function SB.ResetPosition()
 
     key = SlayerBarsOtherBars:GetName()
     SB.sv.positions[key] = {zx - SlayerBarsOtherBars:GetWidth() / 2, zy + (heightUnit * 2)}
-    SB.UpdateAllBars()
+    SB.UpdateBars()
 end
 
-function SB.UpdateScope()
-    local currentRole = GetSelectedLFGRole()
-    local isTank = currentRole == LFG_ROLE_TANK
-    SlayerBarTrackerIconDemon:SetHidden(not isTank)
-    SlayerBarTrackerIconDemonGlow:SetHidden(not isTank)
-    SlayerBarTrackerDiamondIndicator:SetHidden(currentRole == LFG_ROLE_TANK)
-end
+function SB.ApplyPrimaryStyle(stackedBar)
+    stackedBar.primary = true
+    stackedBar.control:SetParent(SlayerBar)
+    local width = SB.sv.primaryBarWidth
+    local defaultHeight = SB.sv.primaryBarHeight
+    stackedBar.control:SetDimensions(width, defaultHeight)
+    stackedBar.barWidth = width
+    stackedBar:EnableLeadshine()
 
-function SB.UpdateAllBars()
-    SlayerBar:SetDimensions(SB.sv.primaryBarWidth + 100, SB.sv.primaryBarHeight + 30)
-    PRIMARY_BAR:UpdateStyle()
-    for k, v in pairs(SB.instantiatedBars) do
-        if k ~= "boss1" then
-            v:UpdateStyle()
+    stackedBar.shakeAnim = stackedBar.shakeAnim or ANIMATION_MANAGER:CreateTimelineFromVirtual("SlayerBarsUIShake", stackedBar.control)
+    local fo = stackedBar.overlay
+    stackedBar.flashAnim = stackedBar.flashAnim or ANIMATION_MANAGER:CreateTimelineFromVirtual("SlayerBarsHitIndicatorAnimation", fo)
+    stackedBar.flashAnim:SetHandler(
+        "OnPlay",
+        function()
+            fo:SetHidden(false)
         end
-    end
-    local key = SlayerBar:GetName()
-    local key2 = SlayerBarsOtherBars:GetName()
-
-    if not (SB.sv.positions[key] and SB.sv.positions[key2]) then
-        SB.ResetPosition()
-    end
-
-    SlayerBar:ClearAnchors()
-    SlayerBar:SetAnchor(TOPLEFT, GuiRoot, TOPLEFT, SB.sv.positions[key][1], SB.sv.positions[key][2])
-    Utils.CircularTexture(SlayerBarTrackerFrameCircleInner, LUIE_MEDIA_UNITFRAMES_TEXTURES_MELLIDARKROUGH_DDS)
-
-    SlayerBarsOtherBars:ClearAnchors()
-    SlayerBarsOtherBars:SetAnchor(TOPLEFT, GuiRoot, TOPLEFT, SB.sv.positions[key2][1], SB.sv.positions[key2][2])
-end
-
-function SB.OnRoleChanged(_, unitTag, newRole)
-    SlayerBarTrackerIconDemon:SetHidden(newRole ~= LFG_ROLE_TANK)
-    SlayerBarTrackerIconDemonGlow:SetHidden(newRole ~= LFG_ROLE_TANK)
-    SlayerBarTrackerDiamondIndicator:SetHidden(newRole == LFG_ROLE_TANK)
-end
-
-function SB.OnReticleTargetChanged()
-    if not DoesUnitExist("reticleover") then
-        currentReticleUnitId = nil
-    end
-end
-
-function SB.OnPlayerZoneChange(_)
-    local UpdateEventName = SB.name .. "Update"
-    if (GetCurrentZoneHouseId() > 0) then
-        -- EVENT_MANAGER:RegisterForUpdate(UpdateEventName, 100, SB.OnUpdate)
-    else
-        --EVENT_MANAGER:UnregisterForEvent(EVENT_RETICLE_TARGET_CHANGED)
-        -- EVENT_MANAGER:UnregisterForUpdate(UpdateEventName)
-    end
-    SB.OnBossesChanged()
-end
-
-local function TrackUnit(unitTag, unitId)
-    if not unitId then
-        return
-    end
-    enemyTracker.byId[unitId] = enemyTracker.byId[unitId] or {}
-
-    if unitTag == "reticleover" then
-        currentReticleUnitId = unitId
-    end
-    if string.find(unitTag, "^boss%d+") then
-        enemyTracker.bossMap[unitTag] = unitId
-        enemyTracker.byId[unitId].unitTag = unitTag
-    end
-end
-
-local UpdateEventName = SB.name .. "Update"
-function SB.OnCombatState(_, inCombat)
-    if inCombat then
-        SB.Anim.DiamondPulse:SetPlaybackType(ANIMATION_PLAYBACK_LOOP, LOOP_INDEFINITELY)
-        SB.Anim.DiamondPulse:PlayFromStart()
-        SB.UpdateScope()
-        EVENT_MANAGER:RegisterForUpdate(UpdateEventName, 100, SB.OnUpdate)
-    else
-        SB.UpdateScope()
-        SB.Anim.DiamondPulse:Stop()
-        EVENT_MANAGER:UnregisterForUpdate(UpdateEventName)
-    end
-end
-
-function SB.OnEffectChanged(
-    _,
-    changeType,
-    effectSlot,
-    effectName,
-    unitTag,
-    beginTime,
-    endTime,
-    stackCount,
-    iconName,
-    buffType,
-    effectType,
-    abilityType,
-    statusEffectType,
-    unitName,
-    unitId,
-    abilityId,
-    sourceUnitType)
-    TrackUnit(unitTag, unitId)
-    local currentTime = GetGameTimeSeconds()
-    if effectName == OB_NAME then
-        if changeType == EFFECT_RESULT_GAINED then
-            enemyTracker.byId[unitId][effectName] = {0, beginTime, endTime}
-        elseif changeType == EFFECT_RESULT_FADED then
-            enemyTracker.byId[unitId][effectName] = nil
+    )
+    stackedBar.flashAnim:SetHandler(
+        "OnStop",
+        function()
+            fo:SetHidden(true)
         end
-    elseif effectName == OB_IMMUNE_NAME then
-        if changeType == EFFECT_RESULT_GAINED then
-            enemyTracker.byId[unitId][effectName] = {0, beginTime, endTime}
+    )
+    stackedBar.flashAnim:SetPlaybackType(ANIMATION_PLAYBACK_PING_PONG)
+    stackedBar.flashAnim:SetPlaybackLoopCount(1)
+    stackedBar.flashAnim:GetAnimation(1):SetDuration(300)
 
-            local dur = endTime - beginTime
-            local now = GetFrameTimeMilliseconds()
-            local total = (endTime - beginTime) * 1000
-            local remaining = endTime * 1000 - GetFrameTimeMilliseconds()
-            -- SlayerBarTrackerFrameCircleCooldown:SetHidden(false)
-            -- SlayerBarFrameCircleCooldown:SetVerticalCooldownLeadingEdgeHeight(12)
-            -- SlayerBarFrameCircleCooldown:SetAlpha(1)
-            -- SlayerBarFrameCircleCooldown:StartCooldown(remaining, total, CD_TYPE_VERTICAL_REVEAL, CD_TIME_TYPE_TIME_UNTIL, false)
-            SlayerBarInkBgOffBalance:SetHidden(false)
-            SlayerBarInkBgOffBalance:SetMinMax(0, dur)
-            SlayerBarInkBgOffBalance:SetValue(dur)
-        elseif changeType == EFFECT_RESULT_FADED then
-            -- SlayerBarFrameCircleCooldown:ResetCooldown()
-            enemyTracker.byId[unitId][effectName] = nil
-            SlayerBarInkBgOffBalance:SetHidden(true)
-        end
-    end
+    stackedBar.nameLabel:SetFont(Util.FormatFont(SB.sv.primaryNameFont))
+    stackedBar:SetResourceFormat(SB.sv.primaryResourceNumberFormat)
 end
 
-local RETICLE_OVER = "reticleover"
-local obVisualActive = false
-
-function SB.OnUpdate()
-    local unitId = enemyTracker.bossMap["boss1"]
-    if not unitId then
-        if obVisualActive then
-            -- Utils.CircularTexture(SlayerBarTrackerFrameCircleInner, LUIE_MEDIA_UNITFRAMES_TEXTURES_MELLIDARKROUGH_DDS)
-            SB.Anim.DizzyZoomOut:PlayFromStart()
-            SB.Anim.DizzyRotate:Stop()
-            SB.Anim.DiamondPulse:PlayFromStart()
-            obVisualActive = false
-        end
-        return
-    end
-
-    local unitEffects = enemyTracker.byId[unitId]
-    local ob_buff_info = unitEffects and unitEffects[OB_NAME]
-
-    if not ob_buff_info then
-        if obVisualActive then
-            -- Utils.CircularTexture(SlayerBarTrackerFrameCircleInner, LUIE_MEDIA_UNITFRAMES_TEXTURES_MELLIDARKROUGH_DDS)
-            SB.Anim.DizzyZoomOut:PlayFromStart()
-            SB.Anim.DizzyRotate:Stop()
-            SB.Anim.DiamondPulse:PlayFromStart()
-            obVisualActive = false
-        end
-        return
-    end
-
-    if not obVisualActive then
-        Utils.CircularTexture(SlayerBarTrackerFrameCircleInner, "/esoui/art/icons/ability_debuff_offbalance.dds")
-        obVisualActive = true
-    end
-
-    if ob_buff_info[1] == 0 then
-        SB.Anim.DizzyZoomIn:PlayFromStart()
-        SB.Anim.DizzyRotate:PlayFromStart()
-        SB.Anim.DiamondPulse:Stop()
-        PRIMARY_BAR:ImpactShake()
-        ob_buff_info[1] = 1
-    else
-        SB.Anim.DizzyZoomIn:PlayForward()
-        SB.Anim.DizzyRotate:PlayForward()
-        SB.Anim.DiamondPulse:Stop()
-    end
-end
-
-function SB.OnMoveStop(control)
-    SB.sv.positions = SB.sv.positions or {}
-    SB.sv.positions[control:GetName()] = {control:GetLeft(), control:GetTop()}
-    SB.UpdateAllBars()
+function SB.ApplyOtherStyle(stackedBar)
+    stackedBar.primary = false
+    stackedBar.control:SetParent(SlayerBarsOtherBars)
+    stackedBar.control:SetHeight(SB.sv.addBossBarHeight)
+    stackedBar:DisableLeadshine()
+    stackedBar:SetStacks(1)
+    stackedBar.nameLabel:SetFont(Util.FormatFont(SB.sv.addBossNameFont))
+    stackedBar:SetResourceFormat(SB.sv.addBossResourceNumberFormat)
 end
 
 function SB.Unlock(unlock)
     local u = (unlock == nil) and true or unlock
+    SB.is_unlocked = u
     if u then
         for k, v in pairs(SB.instantiatedBars) do
             v:Show()
         end
-        SB.instantiatedBars["boss7"]:SetImmuneVisual()
+        SB.instantiatedBars["boss7"]:SetInvulnVisual()
         GAME_MENU_SCENE:AddFragment(SB.other_bars_frag)
-        GAME_MENU_SCENE:AddFragment(primary_bar_frag)
-        primary_bar_frag:Show()
-        SB.other_bars_frag:Show()
+        GAME_MENU_SCENE:AddFragment(SB.primary_bar_frag)
     else
         GAME_MENU_SCENE:RemoveFragment(SB.other_bars_frag)
-        GAME_MENU_SCENE:RemoveFragment(primary_bar_frag)
+        GAME_MENU_SCENE:RemoveFragment(SB.primary_bar_frag)
         SB.OnBossesChanged(_, true)
     end
     SlayerBar:SetMovable(u)
     SlayerBarsOtherBars:SetMovable(u)
-    SlayerBarTracker:SetHidden(not u)
+    SB.primary_bar_frag.hiddenReasons:SetShownForReason("Unlocked", u)
+    SB.other_bars_frag.hiddenReasons:SetShownForReason("Unlocked", u)
+    SB.primary_bar_frag:Refresh()
+    SB.other_bars_frag:Refresh()
 end
 
-SB.pool =
+SB.OtherBarsPool =
     ZO_ObjectPool:New(
     function(pool)
         local c = ZO_ObjectPool_CreateControl("SlayerBarStatusTemplate", pool, SlayerBarsOtherBars)
@@ -913,16 +591,331 @@ SB.pool =
     end
 )
 
+function SB.UpdateDisplayLayout()
+    local primaryFontSize = SB.sv.primaryNameFont[2]
+    local primaryPaddingTop = primaryFontSize * 1.5
+    SB.ApplyPrimaryStyle(PRIMARY_BAR)
+    local secondBar = SB.instantiatedBars["boss2"]
+    if SB.enemyTracker.twinFight then
+        SB.ApplyPrimaryStyle(secondBar)
+        secondBar.control:ClearAnchors()
+        secondBar.control:SetAnchor(TOP, PRIMARY_BAR.control, BOTTOM, 0, primaryPaddingTop)
+        secondBar:SetUnitInfo()
+    else
+        SB.ApplyOtherStyle(secondBar)
+        local minPadding = 2
+        local addiWidth = SB.sv.addBossBarWidth
+        local addiHeight = SB.sv.addBossBarHeight
+        local halfW = addiWidth / 2
+        local secondaryFontSize = SB.sv.addBossNameFont[2]
+        local innerPadding = 5
+        local rowHeight = addiHeight + zo_max(minPadding, (secondaryFontSize * 1.5))
+        for i = 2, MAX_BOSSES do
+            local tag = "boss" .. i
+            local stkd = SB.instantiatedBars[tag]
+            stkd.control:ClearAnchors()
+            stkd.control:SetHeight(addiHeight)
+            if SB.sv.addBossDisplayLayout == SB.Settings.ADD_BOSS_DISPLAY_COMPACT then
+                local evenOdd = i % 2
+                local offsetY = (zo_floor(i / 2) * rowHeight) - secondaryFontSize
+                stkd.barWidth = halfW - innerPadding
+                stkd.control:SetWidth(stkd.barWidth)
+                stkd.control:SetAnchor(TOPLEFT, SlayerBarsOtherBars, TOPLEFT, evenOdd * (halfW + innerPadding), offsetY)
+            else
+                local offsetY = (i - 2) * rowHeight + secondaryFontSize
+                stkd.barWidth = addiWidth
+                stkd.control:SetWidth(addiWidth)
+                stkd.control:SetAnchor(TOPLEFT, SlayerBarsOtherBars, TOPLEFT, 0, offsetY)
+            end
+        end
+        local rows = SB.sv.addBossDisplayLayout == SB.Settings.ADD_BOSS_DISPLAY_COMPACT and 3 or 6
+        SlayerBarsOtherBars:SetDimensions(SB.sv.primaryBarWidth, rowHeight * rows)
+    end
+    -- local _, _, _, _, topLvlWidth, topLvlHeight = Util.GetBounds(SlayerBar)
+    -- local count = SlayerBar:GetNumChildren()
+    SlayerBar:SetDimensions(SB.sv.primaryBarWidth + 100, SB.sv.primaryBarHeight + primaryPaddingTop)
+    Util.CircularTexture(SlayerBarTrackerFrameCircleInner, LUIE_MEDIA_UNITFRAMES_TEXTURES_MELLIDARKROUGH_DDS)
+end
+
+function SB.UpdateBars()
+    for k, v in pairs(SB.instantiatedBars) do
+        if v.primary then
+            SB.ApplyPrimaryStyle(v)
+        else
+            SB.ApplyOtherStyle(v)
+        end
+        v:UpdateTexture()
+        v:AlignNameplate()
+    end
+    local key = SlayerBar:GetName()
+    local key2 = SlayerBarsOtherBars:GetName()
+
+    if not (SB.sv.positions[key] and SB.sv.positions[key2]) then
+        SB.ResetPosition()
+    end
+
+    SlayerBar:ClearAnchors()
+    SlayerBar:SetAnchor(TOPLEFT, GuiRoot, TOPLEFT, SB.sv.positions[key][1], SB.sv.positions[key][2])
+
+    SlayerBarsOtherBars:ClearAnchors()
+    SlayerBarsOtherBars:SetAnchor(TOPLEFT, GuiRoot, TOPLEFT, SB.sv.positions[key2][1], SB.sv.positions[key2][2])
+    
+    SB.UpdateDisplayLayout()
+end
+
+--------------------------------------------------------------
+-- EVENT STATES
+--------------------------------------------------------------
+local RETICLE_OVER = "reticleover"
+local inHouse = false
+local obVisualActive = false
+local REASON_CUSTOM_LAYOUT = "CustomLayout"
+local REASON_NO_BOSSES = "NoBosses"
+
+function SB.Anim.DizzyStart()
+    SB.Anim.DiamondPulse:Stop()
+    SB.Anim.DizzyZoomIn:PlayFromStart()
+    SB.Anim.DizzyRotate:PlayFromStart()
+    PRIMARY_BAR:ImpactShake()
+end
+
+function SB.Anim.DizzyContinue()
+    SB.Anim.DiamondPulse:Stop()
+    SB.Anim.DizzyZoomIn:PlayForward()
+    SB.Anim.DizzyRotate:PlayForward()
+end
+
+function SB.Anim.DizzyStop()
+    if obVisualActive then
+        SB.Anim.DizzyZoomOut:PlayFromStart()
+        SB.Anim.DizzyRotate:Stop()
+        SB.Anim.DiamondPulse:PlayFromStart()
+        obVisualActive = false
+        Util.CircularTexture(SlayerBarTrackerFrameCircleInner, LUIE_MEDIA_UNITFRAMES_TEXTURES_MELLIDARKROUGH_DDS)
+    end
+end
+
+function SB.OnMoveStop(control)
+    SB.sv.positions = SB.sv.positions or {}
+    SB.sv.positions[control:GetName()] = {control:GetLeft(), control:GetTop()}
+    SB.UpdateBars()
+end
+
+function SB.OnCombatState(_, inCombat)
+-- "/esoui/art/armory/builditem_icon.dds"
+-- "/esoui/art/worldmap/map_centerreticle.dds"
+-- "/esoui/art/reticle/reticleanim-circle.dds"
+    local UpdateEventName = SB.name .. "Update"
+    if inCombat then
+        SB.Anim.DiamondPulse:SetPlaybackType(ANIMATION_PLAYBACK_LOOP, LOOP_INDEFINITELY)
+        SB.Anim.DiamondPulse:PlayFromStart()
+        SB.UpdateScope()
+        EVENT_MANAGER:RegisterForUpdate(UpdateEventName, 100, SB.OnUpdate)
+    else
+        SB.UpdateScope()
+        SB.Anim.DizzyStop()
+        SB.Anim.DiamondPulse:Stop()
+        EVENT_MANAGER:UnregisterForUpdate(UpdateEventName)
+    end
+end
+
+function SB.OnUpdate()
+    local ET = SB.enemyTracker
+    local showIds = SB.sv.showUnitIds
+    local primaryId = ET.bossMap[boss1] or (inHouse and ET.reticleUnitId)
+
+    if showIds then
+        if inHouse and primaryId then
+            PRIMARY_BAR:UpdateUnitId(primaryId)
+        else
+            for tag, v in pairs(ET.bossHealth) do
+                local uId = ET.bossMap[tag]
+                if uId then
+                    local stkd = SB.instantiatedBars[tag]
+                    stkd:UpdateUnitId(uId)
+                end
+            end
+        end
+    end
+
+    if not primaryId then
+        SB.Anim.DizzyStop()
+        return
+    end
+
+    local unitEffects = ET.byId[primaryId]
+    local ob_buff_info = unitEffects and unitEffects[SB.OB_NAME]
+
+    if not ob_buff_info then
+        SB.Anim.DizzyStop()
+        return
+    end
+
+    if not obVisualActive then
+        Util.CircularTexture(SlayerBarTrackerFrameCircleInner, "/esoui/art/icons/ability_debuff_offbalance.dds")
+        obVisualActive = true
+    end
+
+    if ob_buff_info[1] == 0 then
+        SB.Anim.DizzyStart()
+        ob_buff_info[1] = 1
+    else
+        SB.Anim.DizzyContinue()
+    end
+end
+
+local function CloneFightDetected(count)
+    local bossHps = SB.enemyTracker.bossHealth
+    local consolidatedMax = 0
+    for k, v in pairs(bossHps) do
+        consolidatedMax = consolidatedMax + v.maxhp
+    end
+
+    local function OnClonePowerUpdate(unitTag, powerIndex, powerType, powerValue, powerMax, powerEffectiveMax)
+        local t = SB.enemyTracker.bossHealth[unitTag]
+        if not t then return end
+        t.hp = powerValue
+        if PRIMARY_BAR._lastPowerMax ~= consolidatedMax then
+            PRIMARY_BAR:SetMinMax(0, consolidatedMax)
+        end
+        -- PRIMARY_BAR.uavInfo = {GetAllUnitAttributeVisualizerEffectInfo(unitTag)}
+        -- -- { uav, statType, attributeType, powerType, value, maxValue }
+        -- if PRIMARY_BAR.uavInfo[1] == ATTRIBUTE_VISUAL_UNWAVERING_POWER then
+            -- PRIMARY_BAR.uavInvuln = true
+            -- PRIMARY_BAR:SetInvulnVisual()
+        -- else
+            -- PRIMARY_BAR.uavInvuln = false
+        -- end
+        local currentConsolidated = 0
+        for k, v in pairs(bossHps) do
+            currentConsolidated = currentConsolidated + v.hp
+        end
+        PRIMARY_BAR:SetValue(currentConsolidated)
+    end
+
+    local function PrimaryRegisterBosses()
+        PRIMARY_BAR:Unregister()
+        local controlName = PRIMARY_BAR.control:GetName()
+        PRIMARY_BAR.onPowerUpdateHandler =
+            ZO_MostRecentPowerUpdateHandler:New(
+            "SB" .. controlName,
+            function(...)
+                OnClonePowerUpdate(...)
+            end
+        )
+        PRIMARY_BAR.onPowerUpdateHandler:AddFilterForEvent(REGISTER_FILTER_POWER_TYPE, POWERTYPE_HEALTH)
+        PRIMARY_BAR.onPowerUpdateHandler:AddFilterForEvent(REGISTER_FILTER_UNIT_TAG_PREFIX, "boss")
+    end
+
+    PRIMARY_BAR:SetStacks(count)
+    PrimaryRegisterBosses()
+    SB.other_bars_frag:SetHiddenForReason(REASON_CUSTOM_LAYOUT, true)
+end
+
+function SB.CleanupBosses(resetPrimary)
+    if resetPrimary then
+        PRIMARY_BAR:Unregister()
+        PRIMARY_BAR:RegisterUnit(boss1)
+    end
+    SB.primary_bar_frag:SetHiddenForReason(REASON_NO_BOSSES, true)
+    SB.other_bars_frag:SetHiddenForReason(REASON_NO_BOSSES, true)
+    SB.other_bars_frag:SetHiddenForReason(REASON_CUSTOM_LAYOUT, false)
+end
+
+function SB.RegisterDummy()
+    inHouse = true
+    PRIMARY_BAR:Unregister()
+    PRIMARY_BAR:RegisterUnit(RETICLE_OVER)
+end
+
+function SB.UnregisterDummy()
+    inHouse = false
+    SB.CleanupBosses(true)
+end
+
+function SB.UpdateReticleTarget(unitExists)
+    if not inHouse then return end
+    SB.activeBossCount = unitExists and 1 or 0
+    if unitExists then
+       PRIMARY_BAR:SetUnitInfo(true)
+       PRIMARY_BAR:Show()
+    end
+    SB.other_bars_frag:SetHiddenForReason(REASON_CUSTOM_LAYOUT, true)
+    SB.primary_bar_frag:SetHiddenForReason(REASON_NO_BOSSES, not unitExists)
+    SB.primary_bar_frag:Refresh()
+    -- SB.other_bars_frag:Refresh()
+end
+
+function SB.OnBossesChanged(eventid, force)
+    local ET = SB.enemyTracker
+    local count = 0
+    for i = 1, MAX_BOSSES do
+        local tag = "boss" .. i
+        if DoesUnitExist(tag) then
+            count = count + 1
+            local stkd = SB.instantiatedBars[tag]
+            if i == 1 then
+                SB.primary_bar_frag:SetHiddenForReason(REASON_NO_BOSSES, false)
+            end
+            stkd:SetUnitInfo(force)
+            stkd:Show()
+        elseif not SB.is_unlocked then
+            SB.instantiatedBars[tag]:Release()
+        end
+    end
+    SB.activeBossCount = count
+    if count == 0 then
+        CALLBACK_MANAGER:FireCallbacks("OnBossFightEnd", ET.twinFight, ET.cloneFight)
+        ET.bossHealth = {}
+        ET.twinFight = false
+        ET.cloneFight = false
+    else
+        ET.twinFight = count == 2 and ET.bossHealth[boss1].maxhp == ET.bossHealth["boss2"].maxhp
+        local consolidatedMax = 0
+
+        local function allSameMaxHp()
+            local ref
+            for _, v in pairs(ET.bossHealth) do
+                ref = ref or v.maxhp
+                if v.maxhp ~= ref then return false end
+            end
+            return true
+        end
+        ET.cloneFight = allSameMaxHp() and count > 2
+        
+        if ET.cloneFight then
+           CloneFightDetected(count)
+        end
+        SB.other_bars_frag:SetHiddenForReason(REASON_NO_BOSSES, false)
+        -- SB.other_bars_frag:SetHiddenForReason("CustomLayout", SB.enemyTracker.twinFight or SB.enemyTracker.cloneFight)
+    end
+    SB.UpdateDisplayLayout()
+    SB.primary_bar_frag:Refresh()
+    SB.other_bars_frag:Refresh()
+end
+
+function SB.OnCombatEvent(eventid, result, isError, abilityName, abilityGraphic, abilityActionSlotType, sourceName, sourceType, targetName, targetType, hitValue, powerType, damageType, log, sourceUnitId, targetUnitId, abilityId, overflow)
+    local IDs = SB.enemyTracker.byId
+    if IDs[targetUnitId] and sourceType == COMBAT_UNIT_TYPE_PLAYER and (result == ACTION_RESULT_CRITICAL_DAMAGE or result == ACTION_RESULT_DOT_TICK_CRITICAL) then
+        local unitTag = IDs[targetUnitId].unitTag
+        -- d(string.format('%s [%d] %s', unitTag, targetUnitId, targetName))
+        if unitTag then
+            local stkd = SB.instantiatedBars[unitTag]
+            if not stkd:LeadIsHidden() then stkd.leadHit() end
+        end
+    end
+end
+
+--------------------------------------------------------------
+-- Init
+--------------------------------------------------------------
 function SB.Anim.Init()
-    SB.Anim.DiamondIndicatorZoomOut =
-        ANIMATION_MANAGER:CreateTimelineFromVirtual("SlayerBarsZoomOut", SlayerBarTrackerDiamondIndicator)
-
     SB.Anim.OBShake = ANIMATION_MANAGER:CreateTimelineFromVirtual("SlayerBarsUIShake", SlayerBarMain)
-
     SB.Anim.DizzyRotate = ANIMATION_MANAGER:CreateTimelineFromVirtual("SlayerBarsDizzyRotate", SlayerBarTrackerIconDizzyStars)
     SB.Anim.DizzyZoomIn = ANIMATION_MANAGER:CreateTimelineFromVirtual("SlayerBarsZoomIn", SlayerBarTrackerIconDizzyStars)
     SB.Anim.DizzyZoomOut = ANIMATION_MANAGER:CreateTimelineFromVirtual("SlayerBarsZoomOut", SlayerBarTrackerIconDizzyStars)
 
+    SB.Anim.DiamondIndicatorZoomOut = ANIMATION_MANAGER:CreateTimelineFromVirtual("SlayerBarsZoomOut", SlayerBarTrackerDiamondIndicator)
     SB.Anim.DiamondPulse = ANIMATION_MANAGER:CreateTimelineFromVirtual("SlayerBarsZoomOut", SlayerBarTrackerDiamondIndicator)
     SB.Anim.DiamondPulse:GetAnimation(1):SetDuration(500)
     SB.Anim.DiamondPulse:GetAnimation(2):SetDuration(500)
@@ -931,158 +924,46 @@ function SB.Anim.Init()
     SB.Anim.DiamondPulse:SetAnimationOffset(t, 500)
 end
 
-function SB.ToDizzy()
-end
-
-function SB.OnBossesChanged(_, forceReset)
-    local count = 0
-    local primary = "boss1"
-    if DoesUnitExist(primary) then
-        count = 1
-        PRIMARY_BAR:UpdateDifficulty()
-        primary_bar_frag:Show()
-        SlayerBarTracker:SetHidden(false)
-        local current, maxhp, effmax = GetUnitPower(primary, POWERTYPE_HEALTH)
-        PRIMARY_BAR:OnPowerUpdate(primary, nil, POWERTYPE_HEALTH, current, maxhp, effmax)
-    elseif not SB.is_unlocked then
-        SlayerBarTracker:SetHidden(true)
-    end
-    for i = 2, MAX_BOSSES do
-        local tag = "boss" .. i
-        if DoesUnitExist(tag) then
-            count = count + 1
-            local stkd = SB.instantiatedBars[tag]
-            local current, maxhp, effmax = GetUnitPower(tag, POWERTYPE_HEALTH)
-            stkd:OnPowerUpdate(tag, nil, POWERTYPE_HEALTH, current, maxhp, effmax)
-            stkd:Show()
-        elseif not SB.is_unlocked then
-            SB.instantiatedBars[tag]:Release()
-        end
-    end
-    SB.activeBossCount = count
-    primary_bar_frag:SetHiddenForReason("BossCount", not (count > 0 or SB.is_unlocked))
-    SB.other_bars_frag:SetHiddenForReason("BossCount", not (count > 1 or SB.is_unlocked))
-    enemyTracker.twinFight = count == 2 and enemyTracker.bossHealth["boss1"].maxhp == enemyTracker.bossHealth["boss2"].maxhp
-    if count == 0 then
-        enemyTracker.bossHealth = {}
-    end
-    SB.UpdateDisplayLayout()
-end
-
-function SB.UpdateDisplayLayout()
-    local width = SB.sv.primaryBarWidth
-    local defaultHeight = SB.sv.primaryBarHeight
-    local primaryFontSize = SB.sv.primaryNameFont[2]
-    PRIMARY_BAR.control:SetDimensions(width, defaultHeight)
-    PRIMARY_BAR.barWidth = width
-    local secondBar = SB.instantiatedBars["boss2"]
-    if enemyTracker.twinFight then
-        secondBar.primary = true
-        secondBar:EnableLeadshine()
-        secondBar.control:SetDimensions(width, defaultHeight)
-        secondBar.control:ClearAnchors()
-        secondBar.control:SetAnchor(TOP, PRIMARY_BAR.control, BOTTOM, 0, primaryFontSize * 1.5)
-        secondBar.barWidth = width
-        secondBar:UpdateDifficulty()
-        return
-    else
-        secondBar.primary = false
-        secondBar:DisableLeadshine()
-        secondBar:SetStacks(1)
-    end
-    local minPadding = 2
-    local addiWidth = SB.sv.addBossBarWidth
-    local addiHeight = SB.sv.addBossBarHeight
-    local halfW = addiWidth / 2
-    local secondaryFontSize = SB.sv.addBossNameFont[2]
-    local innerPadding = 5
-    local rowHeight = addiHeight + zo_max(minPadding, (secondaryFontSize * 1.5))
-    for i = 2, MAX_BOSSES do
-        local tag = "boss" .. i
-        local stkd = SB.instantiatedBars[tag]
-        stkd.control:ClearAnchors()
-        stkd.control:SetHeight(addiHeight)
-        if SB.sv.addBossDisplayLayout == SB.Settings.ADD_BOSS_DISPLAY_COMPACT then
-            local evenOdd = i % 2
-            local offsetY = (zo_floor(i / 2) * rowHeight) - secondaryFontSize
-            stkd.barWidth = halfW - innerPadding
-            stkd.control:SetWidth(stkd.barWidth)
-            stkd.control:SetAnchor(TOPLEFT, SlayerBarsOtherBars, TOPLEFT, evenOdd * (halfW + innerPadding), offsetY)
-        else
-            local offsetY = (i - 2) * rowHeight + secondaryFontSize
-            stkd.barWidth = addiWidth
-            stkd.control:SetWidth(addiWidth)
-            stkd.control:SetAnchor(TOPLEFT, SlayerBarsOtherBars, TOPLEFT, 0, offsetY)
-        end
-    end
-    local rows = SB.sv.addBossDisplayLayout == SB.Settings.ADD_BOSS_DISPLAY_COMPACT and 3 or 6
-    SlayerBarsOtherBars:SetDimensions(SB.sv.primaryBarWidth, rowHeight * rows)
-end
-
 function SB.InitBars()
-    PRIMARY_BAR = StackedBar:New("boss1", SlayerBarMain)
-    PRIMARY_BAR.primary = true
-    PRIMARY_BAR:EnableLeadshine()
-    PRIMARY_BAR.leadHit =
-        Utils.Debounce(
-        function()
-            PRIMARY_BAR.leadshineHitAnim:PlayFromStart()
-        end,
-        800
-    )
 
-    PRIMARY_BAR:RegisterUnit(PRIMARY_BAR.unitTag)
-    PRIMARY_BAR.control:RegisterForEvent(
-        EVENT_COMBAT_EVENT,
+    PRIMARY_BAR = StackedBar:New(boss1, SlayerBarMain)
+    SB.ApplyPrimaryStyle(PRIMARY_BAR)
+
+    PRIMARY_BAR:RegisterUnit(boss1)
+    EVENT_MANAGER:RegisterForEvent(SB.name.."CombatEvent", EVENT_COMBAT_EVENT,
         function(...)
             SB.OnCombatEvent(...)
         end
     )
-    
+
     SB.other_bars_frag = ZO_HUDFadeSceneFragment:New(SlayerBarsOtherBars)
-    primary_bar_frag = ZO_HUDFadeSceneFragment:New(SlayerBar)
-    HUD_SCENE:AddFragment(primary_bar_frag)
-    HUD_UI_SCENE:AddFragment(primary_bar_frag)
-    SB.instantiatedBars["boss1"] = PRIMARY_BAR
+    SB.primary_bar_frag = ZO_HUDFadeSceneFragment:New(SlayerBar)
+
+    SB.primary_bar_frag:SetConditional(function () return SB.is_unlocked or SB.activeBossCount > 0 end)
+    SB.other_bars_frag:SetConditional(function () return SB.is_unlocked or
+        (SB.activeBossCount > 1 and not SB.other_bars_frag.hiddenReasons:IsHidden())
+        end)
+    HUD_SCENE:AddFragment(SB.primary_bar_frag)
+    HUD_UI_SCENE:AddFragment(SB.primary_bar_frag)
+    HUD_SCENE:AddFragment(SB.other_bars_frag)
+    HUD_UI_SCENE:AddFragment(SB.other_bars_frag)
+
+    SB.instantiatedBars[boss1] = PRIMARY_BAR
 
     for i = 2, MAX_BOSSES do
         local tag = "boss" .. i
         local stkd = StackedBar:New(tag, nil, SlayerBarsOtherBars)
-        stkd:RegisterUnit(tag)
-        stkd:SetStacks(1)
         stkd:SetMinMax(0, 1)
         stkd:SetValue(1)
-        stkd:UpdateStyle()
-        stkd:DisableLeadshine()
+        stkd:RegisterUnit(tag)
+        stkd:UpdateTexture()
+        SB.ApplyOtherStyle(stkd)
         SB.instantiatedBars[tag] = stkd
     end
-    SB.UpdateDisplayLayout()
-    SB.UpdateAllBars()
-    HUD_SCENE:AddFragment(SB.other_bars_frag)
-    HUD_UI_SCENE:AddFragment(SB.other_bars_frag)
-end
 
-local function OnLoaded(_, name)
-    if name ~= SB.name then
-        return
-    end
-    SB.is_console = IsConsoleUI()
-    RegisterAbilities()
-    SB.InitSettingsMenu()
-    SB.InitBars()
-    SB.Anim.Init()
-    SB.UpdateScope()
-    SB.Unlock(SB.is_unlocked)
-    COMPASS_FRAME:SetBossBarHiddenForReason(SB.name, true)
-    EVENT_MANAGER:RegisterForEvent(SB.name .. "CombatState", EVENT_PLAYER_COMBAT_STATE, SB.OnCombatState)
-    EVENT_MANAGER:RegisterForEvent(SB.name .. "EffectChange", EVENT_EFFECT_CHANGED, SB.OnEffectChanged)
-    EVENT_MANAGER:RegisterForEvent(SB.name .. "ReticleTarget", EVENT_RETICLE_TARGET_CHANGED, SB.OnReticleTargetChanged)
-    EVENT_MANAGER:RegisterForEvent(SB.name .. "PlayerLoaded", EVENT_PLAYER_ACTIVATED, SB.OnPlayerZoneChange)
-    EVENT_MANAGER:RegisterForEvent(SB.name .. "BossesChanged", EVENT_BOSSES_CHANGED, SB.OnBossesChanged)
-    -- EVENT_MANAGER:RegisterForEvent(SB.name.."RoleSwap", EVENT_GROUP_MEMBER_ROLE_CHANGED, SB.OnRoleChanged)
-    -- EVENT_MANAGER:AddFilterForEvent(SB.name.."RoleSwap", EVENT_GROUP_MEMBER_ROLE_CHANGED, REGISTER_FILTER_UNIT_TAG, "player")
-    -- EVENT_MANAGER:RegisterForEvent(EVENT_GAMEPAD_PREFERRED_MODE_CHANGED, function() RefreshAllBosses(true) end)
-    EVENT_MANAGER:UnregisterForEvent(EVENT_ADD_ON_LOADED)
-end
+    CALLBACK_MANAGER:RegisterCallback("OnBossFightEnd", function(twinFight, cloneFight)
+        SB.CleanupBosses(cloneFight)
+    end)
 
-EVENT_MANAGER:RegisterForEvent(SB.name .. "AddonLoad", EVENT_ADD_ON_LOADED, OnLoaded)
+    SB.UpdateBars()
+end

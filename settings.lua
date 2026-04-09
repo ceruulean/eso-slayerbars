@@ -1,11 +1,12 @@
-SlayerBars = SlayerBars
+SlayerBars = SlayerBars or {}
 local SB = SlayerBars
 local LAM = LibAddonMenu2
+local LMP = LibMediaProvider
 local panelName = "SlayerBarsSettingsPanel"
-
-local LMP = LibMediaProvider or {}
+local savedVersion = 1
 local is_previewing = false
 local is_previewing_twins = false
+ZO_CreateStringId("SB_ALIGN_RIGHT", "Right")
 
 function GetTableKeys(tab)
     local keyset = {}
@@ -22,6 +23,15 @@ function GetTableValues(tab)
     end
     return keyset
 end
+
+local ALIGN = {
+    [1] = GetString(SB_ALIGN_RIGHT),
+    [2] = GetString("SI_NAMEPLATEDISPLAYCHOICE", 11),
+    [3] = GetString("SI_NAMEPLATEDISPLAYCHOICE", 10),
+}
+
+local ALIGN_CHOICES = GetTableValues(ALIGN)
+local ALIGN_CHOICES_VALUES = GetTableKeys(ALIGN)
 
 local BACKDROP_CHOICES = {
     "ZO_FrameBackdrop",
@@ -82,21 +92,22 @@ local ADD_BOSS_DISPLAY = {
     [SB.Settings.ADD_BOSS_DISPLAY_COMPACT] = "Compact",
     [SB.Settings.ADD_BOSS_DISPLAY_LIST] = "List"
 }
-
 local ADD_BOSS_DISPLAY_CHOICES = GetTableValues(ADD_BOSS_DISPLAY)
+local ADD_BOSS_DISPLAY_CHOICES_VALUES = GetTableKeys(ADD_BOSS_DISPLAY)
 
+local RESOURCE_NUMBER_STRING = GetString(SI_INTERFACE_OPTIONS_RESOURCE_NUMBERS)
 local RESOURCE_NUMBER_FORMATS = {RESOURCE_NUMBERS_SETTING_OFF, RESOURCE_NUMBERS_SETTING_NUMBER_ONLY, RESOURCE_NUMBERS_SETTING_PERCENT_ONLY, RESOURCE_NUMBERS_SETTING_NUMBER_AND_PERCENT}
 local RESOURCE_NUMBER_CHOICES = {}
 for i=1, #RESOURCE_NUMBER_FORMATS do
     table.insert(RESOURCE_NUMBER_CHOICES, GetString("SI_RESOURCENUMBERSSETTING", RESOURCE_NUMBER_FORMATS[i]))
 end
 
-
-local savedVersion = 1
 local DEFAULTS = {
     debugMode = false,
+    nameAlignment = 3,
     targetBarTex = "Inner Shadow Glossy",
     targetBacklayerTex = "Cilo",
+    targetInvulnColor = { 0.961, 0.929, 0.651 },
     backdropStyle = BACKDROP_CHOICES[1],
     positions = {},
     primaryBarWidth = 500,
@@ -109,7 +120,7 @@ local DEFAULTS = {
     addBossBarHeight = 20,
     addBossNameFont = {"Univers 67", 18, "soft-shadow-thick"},
     addBossResourceNumberFormat = RESOURCE_NUMBERS_SETTING_OFF,
-
+    showUnitIds = false,
 }
 
 local previewBar
@@ -153,7 +164,7 @@ local function ShowPreviewBars()
 end
 
 local function UpdatePreviewBars()
-    previewBar:UpdateStyle()
+    previewBar:UpdateTexture()
 end
 
 local function HidePreviewBars()
@@ -162,7 +173,7 @@ end
 
 local function LivePreview()
     if SB.is_unlocked then
-        SB.UpdateAllBars()
+        SlayerBars.UpdateBars()
     end
     if is_previewing then
         UpdatePreviewBars()
@@ -178,7 +189,6 @@ local optionsData = {
             return SB.is_unlocked
         end,
         setFunc = function(newValue)
-            SB.is_unlocked = newValue
             SB.Unlock(newValue)
         end,
         width = "half"
@@ -193,52 +203,78 @@ local optionsData = {
         width = "half"
     },
     {
-        type = "header",
-        name = "Target Frame",
-        tooltip = "Adjust the style of target frames."
-    },
-    {
-        type = "dropdown",
-        name = "Bar Texture",
-        getFunc = function()
-            return SB.sv.targetBarTex
-        end,
-        setFunc = function(val)
-            SB.sv.targetBarTex = val
-            LivePreview()
-        end,
-        choices = BAR_TEXT_CHOICES, -- LMP:List(LMP.MediaType.STATUSBAR)
-        default = DEFAULTS.targetBarTex,
-        width = "half"
-    },
-    {
-        type = "dropdown",
-        name = "Backlayer Texture",
-        getFunc = function()
-            return SB.sv.targetBacklayerTex
-        end,
-        setFunc = function(val)
-            SB.sv.targetBacklayerTex = val
-            LivePreview()
-        end,
-        choices = BACKLAYER_TEX_CHOICES, -- LMP:List(LMP.MediaType.STATUSBAR)
-        default = DEFAULTS.targetBacklayerTex,
-        width = "half"
-    },
-    {
-        type = "dropdown",
-        name = "Backdrop Style",
-        tooltip = "The border style",
-        choices = BACKDROP_CHOICES,
-        getFunc = function()
-            return SB.sv.backdropStyle
-        end,
-        setFunc = function(val)
-            SB.sv.backdropStyle = val
-            LivePreview()
-        end,
-        requiresReload = true,
-        default = DEFAULTS.backdropStyle
+        type = "submenu",
+        name = "General",
+        tooltip = "Adjust the style of target frames.",
+        controls = {
+            {
+                type = "dropdown",
+                name = "Name Alignment",
+                getFunc = function()
+                    return SB.sv.nameAlignment
+                end,
+                setFunc = function(val)
+                    SB.sv.nameAlignment = val
+                    LivePreview()
+                end,
+                choices = ALIGN_CHOICES,
+                choicesValues = ALIGN_CHOICES_VALUES,
+                default = DEFAULTS.nameAlignment,
+            },
+            {
+                type = "dropdown",
+                name = "Bar Texture",
+                getFunc = function()
+                    return SB.sv.targetBarTex
+                end,
+                setFunc = function(val)
+                    SB.sv.targetBarTex = val
+                    LivePreview()
+                end,
+                choices = BAR_TEXT_CHOICES, -- LMP:List(LMP.MediaType.STATUSBAR)
+                default = DEFAULTS.targetBarTex,
+                width = "half"
+            },
+            {
+                type = "dropdown",
+                name = "Backlayer Texture",
+                getFunc = function()
+                    return SB.sv.targetBacklayerTex
+                end,
+                setFunc = function(val)
+                    SB.sv.targetBacklayerTex = val
+                    LivePreview()
+                end,
+                choices = BACKLAYER_TEX_CHOICES, -- LMP:List(LMP.MediaType.STATUSBAR)
+                default = DEFAULTS.targetBacklayerTex,
+                width = "half"
+            },
+            {
+                type = "dropdown",
+                name = "Backdrop Style",
+                tooltip = "The border style",
+                choices = BACKDROP_CHOICES,
+                getFunc = function()
+                    return SB.sv.backdropStyle
+                end,
+                setFunc = function(val)
+                    SB.sv.backdropStyle = val
+                    LivePreview()
+                end,
+                requiresReload = true,
+                default = DEFAULTS.backdropStyle
+            },
+            {
+              type = "colorpicker",
+              name = "Invulnerable Color",
+              getFunc = function() return unpack(SB.sv.targetInvulnColor) end,
+              setFunc = function(r,g,b)
+                SB.sv.targetInvulnColor = { r, g, b }
+                SB.instantiatedBars["boss7"]:SetInvulnVisual()
+              end,
+              default = { r = DEFAULTS.targetInvulnColor[1], g = DEFAULTS.targetInvulnColor[2], b = DEFAULTS.targetInvulnColor[3] }
+            },
+        }
     },
     {
         type = "submenu",
@@ -340,7 +376,7 @@ local optionsData = {
             -- reference = "MyAddonSubmenu"
             {
                 type = "dropdown",
-                name = GetString(SI_INTERFACE_OPTIONS_RESOURCE_NUMBERS),
+                name = RESOURCE_NUMBER_STRING,
                 tooltip = "Format of health amount",
                 getFunc = function()
                     return SB.sv.primaryResourceNumberFormat
@@ -372,8 +408,8 @@ local optionsData = {
                     SB.UpdateDisplayLayout()
                     LivePreview()
                 end,
-                choices = GetTableValues(ADD_BOSS_DISPLAY),
-                choicesValues = GetTableKeys(ADD_BOSS_DISPLAY),
+                choices = ADD_BOSS_DISPLAY_CHOICES,
+                choicesValues = ADD_BOSS_DISPLAY_CHOICES_VALUES,
                 default = DEFAULTS.addBossDisplayLayout,
                 width = "full"
             },
@@ -443,7 +479,7 @@ local optionsData = {
             },
             {
                 type = "dropdown",
-                name = GetString(SI_INTERFACE_OPTIONS_RESOURCE_NUMBERS),
+                name = RESOURCE_NUMBER_STRING,
                 tooltip = "Format of health amount",
                 getFunc = function()
                     return SB.sv.addBossResourceNumberFormat
@@ -460,11 +496,36 @@ local optionsData = {
         },
         -- reference = "MyAddonSubmenu"
     },
+    {
+        type = "submenu",
+        name = "Focus Tracker",
+        tooltip = "Adjust the tracker.",
+        controls = {
+
+        },
+    },
+    {
+        type = "submenu",
+        name = "Developer Settings",
+        tooltip = "Technical details that are not gameplay related",
+        controls = {
+            {
+                type = "checkbox",
+                name = "Show Unit IDs",
+                tooltip = "Show unit IDs in the nameplate for active combat bosses.",
+                getFunc = function() return SB.sv.showUnitIds end,
+                setFunc = function(newValue)
+                    SB.sv.showUnitIds = newValue
+                end,
+                width = "half"
+            },
+        },
+    }
 }
+
 function SlayerBars.InitSettingsMenu()
     SB.sv = ZO_SavedVars:NewAccountWide("SlayerBarsSavedVariables", savedVersion, nil, DEFAULTS)
     -- SlayerBars.savedVariablesChar = ZO_SavedVars:NewCharacterIdSettings("SlayerBarsSavedVariables", 2, nil, OCH.charSettings)
-    LuiMedia:Initialize()
 
     local SBpanel =
         LAM:RegisterAddonPanel(
@@ -496,7 +557,7 @@ function SlayerBars.InitSettingsMenu()
             is_previewing = false
             is_previewing_twins = false
             SB.OnBossesChanged(_, true)
-            SB.UpdateAllBars()
+            SB.UpdateBars()
         end
     )
 end

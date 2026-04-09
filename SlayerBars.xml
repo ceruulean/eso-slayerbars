@@ -110,7 +110,7 @@
                     <Anchor point="BOTTOMRIGHT"/>
                 </StatusBar>
                 <Backdrop name="$(parent)BgBackdrop" layer="BACKGROUND" level="0" inherits="ZO_DarkThinFrame"/>
-                <Texture name="$(parent)Leadshine" textureFile="SlayerBars/media/lead.dds" tier="HIGH" level="10">
+                <Texture name="$(parent)Leadshine" hidden="true" textureFile="SlayerBars/media/lead.dds" tier="HIGH" level="10">
                     <Dimensions x="20" y="52"/>
                     <Anchor point="CENTER" relativeTo="$(parent)" relativePoint="LEFT"/>
                     <TextureCoords left="0.671875" right="1" top="0" bottom="1"/>

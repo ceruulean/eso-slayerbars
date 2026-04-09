@@ -12,9 +12,9 @@
 ## DependsOn: LibAddonMenu-2.0>=40 LuiMedia
 ## OptionalDependsOn: 
 
-
 SlayerBars.lua
 settings.lua
-utils.lua
+util.lua
+main.lua
 
 SlayerBars.xml
