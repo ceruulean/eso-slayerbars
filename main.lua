@@ -66,9 +66,24 @@ SB.enemyTracker = {
     byId = {}, -- [unitId] = { effects... }
     bossMap = {}, -- ["boss1"] = unitId
     bossHealth = {},
+    activeBossCount = 0,
     twinFight = false,
     cloneFight = false,
 }
+
+function SB.enemyTracker:GetBarBy(unitId, unitName)
+    if unitId then
+        local tag = self.byId[unitId].unitTag
+        if tag then return SB.instantiatedBars[tag] end
+    end
+    if unitName then
+        for t,v in pairs(SB.instantiatedBars) do
+            if v.unitName == unitName then return v end
+        end
+        return nil
+    end
+end
+
 local enemyTracker = SB.enemyTracker
 
 local function TrackUnit(unitTag, unitId)
@@ -87,12 +102,18 @@ local function TrackUnit(unitTag, unitId)
     -- CALLBACK_MANAGER:FireCallbacks('OnUnitTracked', unitId, unitTag)
 end
 
-function SB.UpdateScope()
-    local currentRole = GetSelectedLFGRole()
-    local isTank = currentRole == LFG_ROLE_TANK
-    SlayerBarTrackerIconDemon:SetHidden(not isTank)
-    SlayerBarTrackerIconDemonGlow:SetHidden(not isTank)
-    SlayerBarTrackerDiamondIndicator:SetHidden(currentRole == LFG_ROLE_TANK)
+local EVENT_NAME_UPDATE = SB.name .. "Update"
+local function OnCombatState(_, inCombat)
+   SB.inCombat = inCombat
+-- "/esoui/art/armory/builditem_icon.dds"
+-- "/esoui/art/worldmap/map_centerreticle.dds"
+-- "/esoui/art/reticle/reticleanim-circle.dds"
+    SB.UpdateScope(inCombat)
+    if inCombat then
+        EVENT_MANAGER:RegisterForUpdate(EVENT_NAME_UPDATE, 100, SB.OnUpdate)
+    else
+        EVENT_MANAGER:UnregisterForUpdate(EVENT_NAME_UPDATE)
+    end
 end
 
 local function OnReticleTargetChanged(eventId)
@@ -159,11 +180,12 @@ local function OnLoaded(_, name)
     SB.Unlock(SB.is_unlocked)
     COMPASS_FRAME:SetBossBarHiddenForReason(SB.name, true)
     EVENT_MANAGER:RegisterForEvent(SB.name .. "PlayerLoaded", EVENT_PLAYER_ACTIVATED, OnPlayerZoneChanged)
+    EVENT_MANAGER:RegisterForEvent(SB.name .. "CombatState", EVENT_PLAYER_COMBAT_STATE, OnCombatState)
     EVENT_MANAGER:RegisterForEvent(SB.name .. "EffectChange", EVENT_EFFECT_CHANGED, OnEffectChanged)
     EVENT_MANAGER:RegisterForEvent(SB.name .. "ReticleTarget", EVENT_RETICLE_TARGET_CHANGED, OnReticleTargetChanged)
 
     EVENT_MANAGER:RegisterForEvent(SB.name .. "BossesChanged", EVENT_BOSSES_CHANGED, SB.OnBossesChanged)
-    EVENT_MANAGER:RegisterForEvent(SB.name .. "CombatState", EVENT_PLAYER_COMBAT_STATE, SB.OnCombatState)
+
     -- EVENT_MANAGER:RegisterForEvent(SB.name.."RoleSwap", EVENT_GROUP_MEMBER_ROLE_CHANGED, SB.OnRoleChanged)
     -- EVENT_MANAGER:AddFilterForEvent(SB.name.."RoleSwap", EVENT_GROUP_MEMBER_ROLE_CHANGED, REGISTER_FILTER_UNIT_TAG, "player")
     -- EVENT_MANAGER:RegisterForEvent(EVENT_GAMEPAD_PREFERRED_MODE_CHANGED, function() RefreshAllBosses(true) end)

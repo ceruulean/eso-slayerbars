@@ -25,13 +25,16 @@ function GetTableValues(tab)
 end
 
 local ALIGN = {
-    [1] = GetString(SB_ALIGN_RIGHT),
+    [1] = GetString("SI_NAMEPLATEDISPLAYCHOICE", 10),
     [2] = GetString("SI_NAMEPLATEDISPLAYCHOICE", 11),
-    [3] = GetString("SI_NAMEPLATEDISPLAYCHOICE", 10),
+    [3] = GetString(SB_ALIGN_RIGHT),
 }
 
 local ALIGN_CHOICES = GetTableValues(ALIGN)
 local ALIGN_CHOICES_VALUES = GetTableKeys(ALIGN)
+
+local BAR_HEIGHT_MIN = 15
+local BAR_HEIGHT_MAX = 50
 
 local BACKDROP_CHOICES = {
     "ZO_FrameBackdrop",
@@ -113,13 +116,20 @@ local DEFAULTS = {
     primaryBarWidth = 500,
     primaryBarHeight = 25,
     primaryNameFont = {"Univers 67", 20, "soft-shadow-thick"},
-    primaryResourceFont = {"Futura Condensed", 22, "soft-shadow-thick"},
     primaryResourceNumberFormat = RESOURCE_NUMBERS_SETTING_NUMBER_AND_PERCENT,
+    primaryResourceAbbr = true,
+    primaryResourceAlign = 3,
+    primaryResourceFont = {"Futura Condensed", 22, "soft-shadow-thick"},
+    showStackCount = true,
+    stackCountAlign = 1,
     addBossDisplayLayout = SB.Settings.ADD_BOSS_DISPLAY_COMPACT,
     addBossBarWidth = 500,
     addBossBarHeight = 20,
     addBossNameFont = {"Univers 67", 18, "soft-shadow-thick"},
     addBossResourceNumberFormat = RESOURCE_NUMBERS_SETTING_OFF,
+    addBossResourceAlign = 3,
+    addBossResourceFont = {"Futura Condensed", 22, "soft-shadow-thick"},
+    enableTracker = true,
     showUnitIds = false,
 }
 
@@ -130,11 +140,11 @@ local function AutoValue()
         return
     end
     if dummycount % 10 == 0 and dummycount < 100 then
-        previewBar:SetValue((dummycount * 10) + 0.1)
+        previewBar:SetValue( ((dummycount * 10) + 0.1) * 100000 )
     elseif dummycount % 10 == 8 and dummycount < 98 then
-        previewBar:SetValue((dummycount + 2) * 10)
+        previewBar:SetValue( (dummycount + 2) * 1000000 )
     else
-        previewBar:SetValue(dummycount * 10)
+        previewBar:SetValue( dummycount * 1000000 )
     end
     dummycount = dummycount - 2
     if dummycount < 0 then
@@ -151,14 +161,13 @@ end
 local function ShowPreviewBars()
     is_previewing = true
     local lastChild
-    local count = 10
     local spacing = SB.sv.primaryBarHeight + SB.sv.primaryNameFont[2]
     GAME_MENU_SCENE:AddFragment(SB.other_bars_frag)
     previewBar = SB.instantiatedBars["boss1"]
     previewBar.control:SetHidden(false)
-    previewBar:SetMinMax(0, 1000)
+    previewBar:SetMinMax(0, 100000000)
     previewBar:SetStacks(10)
-    previewBar:SetValue(1000)
+    previewBar:SetValue(100000000)
     SlayerBarsOtherBars:SetMovable(true)
     AutoValue()
 end
@@ -199,12 +208,13 @@ local optionsData = {
         tooltip = "Reset boss bars to default position.",
         func = function()
             SB.ResetPosition()
+            LivePreview()
         end,
         width = "half"
     },
     {
         type = "submenu",
-        name = "General",
+        name = "General Style",
         tooltip = "Adjust the style of target frames.",
         controls = {
             {
@@ -265,6 +275,17 @@ local optionsData = {
                 default = DEFAULTS.backdropStyle
             },
             {
+                type = "checkbox",
+                name = "Abbreviate " .. RESOURCE_NUMBER_STRING,
+                getFunc = function() return SB.sv.primaryResourceAbbr end,
+                setFunc = function(newValue)
+                    SB.sv.primaryResourceAbbr = newValue
+                    LivePreview()
+                end,
+                default = DEFAULTS.primaryResourceAbbr,
+                width = "full",
+            },
+            {
               type = "colorpicker",
               name = "Invulnerable Color",
               getFunc = function() return unpack(SB.sv.targetInvulnColor) end,
@@ -282,9 +303,12 @@ local optionsData = {
         tooltip = "Adjust the primary boss bar.",
         controls = {
             {
+                type = "description",
+                text = "Unlock UI and click the preview buttons to toggle various states of the boss bar.",
+            },
+            {
                 type = "button",
                 name = "Preview Twins",
-                tooltip = "Preview twin bars",
                 func = function()
                     if is_previewing_twins then
                        SB.OnBossesChanged(_, true)
@@ -299,8 +323,8 @@ local optionsData = {
             },
             {
                 type = "button",
-                name = "Preview Stacks",
-                tooltip = "Preview stack colors",
+                name = "Preview Boss Bar",
+                tooltip = "Preview stack color in a progressing boss fight.",
                 func = function()
                     if is_previewing then
                         HidePreviewBars()
@@ -338,8 +362,8 @@ local optionsData = {
                     SB.UpdateDisplayLayout()
                     LivePreview()
                 end,
-                min = 10,
-                max = 50,
+                min = BAR_HEIGHT_MIN,
+                max = BAR_HEIGHT_MAX,
                 default = DEFAULTS.primaryBarHeight,
                 width = "half"
             },
@@ -375,6 +399,10 @@ local optionsData = {
             },
             -- reference = "MyAddonSubmenu"
             {
+                type = "divider",
+                height = 5,
+            },
+            {
                 type = "dropdown",
                 name = RESOURCE_NUMBER_STRING,
                 tooltip = "Format of health amount",
@@ -388,7 +416,80 @@ local optionsData = {
                 choices = RESOURCE_NUMBER_CHOICES,
                 choicesValues = RESOURCE_NUMBER_FORMATS,
                 default = DEFAULTS.primaryResourceNumberFormat,
-                width = "full"
+                width = "half"
+            },
+            {
+                type = "dropdown",
+                name = "Alignment",
+                getFunc = function()
+                    return SB.sv.primaryResourceAlign
+                end,
+                setFunc = function(val)
+                    SB.sv.primaryResourceAlign = val
+                    LivePreview()
+                end,
+                choices = ALIGN_CHOICES,
+                choicesValues = ALIGN_CHOICES_VALUES,
+                default = DEFAULTS.primaryResourceAlign,
+                width = "half"
+            },
+            {
+                type = "dropdown",
+                name = RESOURCE_NUMBER_STRING.." Font",
+                sort = "name-up",
+                choices = LMP:List(LMP.MediaType.FONT),
+                getFunc = function()
+                    return SB.sv.primaryResourceFont[1]
+                end,
+                setFunc = function(val)
+                    SB.sv.primaryResourceFont[1] = val
+                    LivePreview()
+                end,
+                default = DEFAULTS.primaryResourceFont[1],
+                width = "half"
+            },
+            {
+                type = "slider",
+                name = "Text Size",
+                getFunc = function()
+                    return SB.sv.primaryResourceFont[2]
+                end,
+                setFunc = function(val)
+                    SB.sv.primaryResourceFont[2] = val
+                    LivePreview()
+                end,
+                min = 10,
+                max = 50,
+                default = DEFAULTS.primaryResourceFont[2],
+                width = "half"
+            },
+            {
+                type = "checkbox",
+                name = "Show Stack Count",
+                tooltip = "Display X amount of bars left.",
+                getFunc = function() return SB.sv.showStackCount end,
+                setFunc = function(newValue)
+                    SB.sv.showStackCount = newValue
+                    LivePreview()
+                end,
+                default = DEFAULTS.showStackCount,
+                width = "half"
+            },
+            {
+                type = "dropdown",
+                name = "Alignment",
+                getFunc = function()
+                    return SB.sv.stackCountAlign
+                end,
+                setFunc = function(val)
+                    SB.sv.stackCountAlign = val
+                    LivePreview()
+                end,
+                choices = {ALIGN[1], ALIGN[3]},
+                choicesValues = {1,3},
+                disabled = function () return not SB.sv.showStackCount end,
+                default = DEFAULTS.stackCountAlign,
+                width = "half"
             },
         }
     },
@@ -441,8 +542,8 @@ local optionsData = {
                     SB.UpdateDisplayLayout()
                     LivePreview()
                 end,
-                min = 10,
-                max = 50,
+                min = BAR_HEIGHT_MIN,
+                max = BAR_HEIGHT_MAX,
                 default = DEFAULTS.addBossBarHeight,
                 width = "half"
             },
@@ -478,6 +579,10 @@ local optionsData = {
                 width = "half"
             },
             {
+                type = "divider",
+                height = 5,
+            },
+            {
                 type = "dropdown",
                 name = RESOURCE_NUMBER_STRING,
                 tooltip = "Format of health amount",
@@ -491,7 +596,52 @@ local optionsData = {
                 choices = RESOURCE_NUMBER_CHOICES,
                 choicesValues = RESOURCE_NUMBER_FORMATS,
                 default = DEFAULTS.addBossResourceNumberFormat,
-                width = "full"
+                width = "half"
+            },
+            {
+                type = "dropdown",
+                name = "Alignment",
+                getFunc = function()
+                    return SB.sv.addBossResourceAlign
+                end,
+                setFunc = function(val)
+                    SB.sv.addBossResourceAlign = val
+                    LivePreview()
+                end,
+                choices = ALIGN_CHOICES,
+                choicesValues = ALIGN_CHOICES_VALUES,
+                default = DEFAULTS.addBossResourceAlign,
+                width = "half"
+            },
+            {
+                type = "dropdown",
+                name = RESOURCE_NUMBER_STRING.." Font",
+                sort = "name-up",
+                choices = LMP:List(LMP.MediaType.FONT),
+                getFunc = function()
+                    return SB.sv.addBossResourceFont[1]
+                end,
+                setFunc = function(val)
+                    SB.sv.addBossResourceFont[1] = val
+                    LivePreview()
+                end,
+                default = DEFAULTS.addBossResourceFont[1],
+                width = "half"
+            },
+            {
+                type = "slider",
+                name = "Text Size",
+                getFunc = function()
+                    return SB.sv.addBossResourceFont[2]
+                end,
+                setFunc = function(val)
+                    SB.sv.addBossResourceFont[2] = val
+                    LivePreview()
+                end,
+                min = 10,
+                max = 50,
+                default = DEFAULTS.addBossResourceFont[2],
+                width = "half"
             },
         },
         -- reference = "MyAddonSubmenu"
@@ -501,12 +651,22 @@ local optionsData = {
         name = "Focus Tracker",
         tooltip = "Adjust the tracker.",
         controls = {
-
+            {
+                type = "checkbox",
+                name = "Enable Tracker",
+                getFunc = function() return SB.sv.enableTracker end,
+                setFunc = function(newValue)
+                    SB.sv.enableTracker = newValue
+                    LivePreview()
+                end,
+                default = DEFAULTS.enableTracker,
+                width = "full",
+            },
         },
     },
     {
         type = "submenu",
-        name = "Developer Settings",
+        name = "Debug Options",
         tooltip = "Technical details that are not gameplay related",
         controls = {
             {
@@ -536,7 +696,12 @@ function SlayerBars.InitSettingsMenu()
             version = SB.version,
             author = "ceruulean",
             registerForRefresh = true,
-            registerForDefaults = true
+            registerForDefaults = true,
+            resetFunc = function()
+                SB.sv.primaryResourceFont = DEFAULTS.primaryResourceFont
+                SB.sv.addBossResourceFont = DEFAULTS.addBossResourceFont
+                SB.UpdateBars()
+            end,
         }
     )
 
