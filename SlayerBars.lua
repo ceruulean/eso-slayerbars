@@ -14,11 +14,12 @@ SB.primary_bar_frag = nil
 SB.other_bars_frag = nil
 local boss1 = "boss1"
 local PRIMARY_BAR = nil
+local crosshairEnabled = true
 
 local EPSILON = 0.0001
 local PEEL_COLORS_COUNT = 10
 
-local PEEL_COLORS = {
+local PEEL_COLORS_PURPLE = {
     ZO_POWER_BAR_GRADIENT_COLORS[COMBAT_MECHANIC_FLAGS_HEALTH],
     {ZO_ColorDef:New("ba280f"), ZO_ColorDef:New("E33F2A")},
     {ZO_ColorDef:New("c23b11"), ZO_ColorDef:New("EB5123")},
@@ -31,7 +32,7 @@ local PEEL_COLORS = {
     {ZO_ColorDef:New("4822D4"), ZO_ColorDef:New("8530DA")},
 }
 
-local PEEL_COLORS_GOLD = {
+local PEEL_COLORS_Handpicked = {
     ZO_POWER_BAR_GRADIENT_COLORS[COMBAT_MECHANIC_FLAGS_HEALTH], -- #722323, #da3030, DeltaE: 21.51
     {ZO_ColorDef:New("c94024"), ZO_ColorDef:New("e63535")},
     {ZO_ColorDef:New("ea6029"), ZO_ColorDef:New("f55842")},
@@ -42,6 +43,19 @@ local PEEL_COLORS_GOLD = {
     {ZO_ColorDef:New("fac121"), ZO_ColorDef:New("facd50")},
     {ZO_ColorDef:New("FFD721"), ZO_ColorDef:New("FFE35E")},
     {ZO_ColorDef:New("f7e739"), ZO_ColorDef:New("f2e76b")}
+}
+
+local PEEL_COLORS = {
+    ZO_POWER_BAR_GRADIENT_COLORS[COMBAT_MECHANIC_FLAGS_HEALTH], -- #722323, #da3030, DeltaE: 21.51
+    {ZO_ColorDef:New("7a2623"), ZO_ColorDef:New("e0442e")},
+    {ZO_ColorDef:New("833024"), ZO_ColorDef:New("e45a2c")},
+    {ZO_ColorDef:New("8c3b24"), ZO_ColorDef:New("e86f28")},
+    {ZO_ColorDef:New("954726"), ZO_ColorDef:New("eb8426")},
+    {ZO_ColorDef:New("9e5327"), ZO_ColorDef:New("ee9425")},
+    {ZO_ColorDef:New("a76029"), ZO_ColorDef:New("f0a827")},
+    {ZO_ColorDef:New("b06d2c"), ZO_ColorDef:New("f2b92e")},
+    {ZO_ColorDef:New("b97931"), ZO_ColorDef:New("f3c53a")},
+    {ZO_ColorDef:New("c28537"), ZO_ColorDef:New("f4c847")},
 }
 
 local StackedBar = ZO_Object:Subclass()
@@ -73,6 +87,8 @@ function StackedBar:Initialize(unitTag, existingControl, parentControl)
     self.barContainer = ctrl:GetNamedChild("BarContainer")
     self.overlay = ctrl:GetNamedChild("FlashOverlay")
     self.overlayScrollAnim = ANIMATION_MANAGER:CreateTimelineFromVirtual("SlayerBarsScroll", self.overlay)
+    
+    self.peelColors = PEEL_COLORS
     -- self.overlayScrollAnim:GetAnimation(1):SetDuration(5000)
 end
 
@@ -328,9 +344,10 @@ function StackedBar:SetValue(value, force)
     local stacks = self.stacks or 1
     local mx = self.powerMax or select(2, bar:GetMinMax())
     if not mx or mx <= 0 then return end
+    local peelColors = self.peelColors
     
     if stacks == 1 then
-        ZO_StatusBar_SetGradientColor(bar, PEEL_COLORS[1])
+        ZO_StatusBar_SetGradientColor(bar, peelColors[1])
         ZO_StatusBar_SmoothTransition(bar, value, mx, false)
 
         if not self._single then
@@ -357,22 +374,22 @@ function StackedBar:SetValue(value, force)
     ZO_StatusBar_SmoothTransition(bar, percentPos * mx, mx, false)
 
     local currentBar = zo_ceil(value * stacks / mx)
-    -- local bucketWidth = self.bucketWidth
 
     local function GetColorIndex(currentBar, stacks)
-        if stacks >= PEEL_COLORS_COUNT then
-            return currentBar
+        if stacks <= 1 then
+            return 1
         end
 
-        -- map 1..stacks → 1..10 skipping evenly
-        local step = (PEEL_COLORS_COUNT - 1) / (stacks - 1)
-        return zo_floor((currentBar - 1) * step + 1.5)
+        local normalized = (currentBar - 1) / (stacks - 1)
+        local index = zo_floor(normalized * (PEEL_COLORS_COUNT - 1)) + 1
+
+        return index
     end
 
     local colorIndex = GetColorIndex(currentBar, stacks)
-    local nextColor = GetColorIndex(currentBar - 1, stacks)
-    d(colorIndex)
-    ZO_StatusBar_SetGradientColor(bar, PEEL_COLORS[colorIndex])
+    local nextColor = GetColorIndex(zo_min(currentBar - 1, stacks), stacks)
+
+    ZO_StatusBar_SetGradientColor(bar, peelColors[colorIndex])
 
     local showStacks = currentBar > 1
     local showStackCount = SB.sv.showStackCount
@@ -382,7 +399,7 @@ function StackedBar:SetValue(value, force)
         if showStackCount then
             self.stacksLabel:SetText("x" .. currentBar)
         end
-        ZO_StatusBar_SetGradientColor(self.backlayer, PEEL_COLORS[nextColor])
+        ZO_StatusBar_SetGradientColor(self.backlayer, peelColors[nextColor])
     end
 
     self:UpdateLeadshine(value, percentPos)
@@ -440,7 +457,7 @@ function StackedBar:InitUnit(force, customName, customCurrent, customMax, custom
         else
             local difficulty = GetUnitDifficulty(tag)
             if difficulty and difficulty >= MONSTER_DIFFICULTY_DEADLY then
-                stacks = (maxhp > 100000000) and 10 or 5
+                stacks = (maxhp > 100000000) and 20 or 5
             end
         end
     end
@@ -747,6 +764,7 @@ end
 local RETICLE_OVER = "reticleover"
 local inHouse = false
 local obVisualActive = false
+local lastReticleUnit = ""
 local REASON_CUSTOM_LAYOUT = "CustomLayout"
 local REASON_NO_BOSSES = "NoBosses"
 
@@ -822,19 +840,36 @@ function SB.OnUpdate()
 
     if not ob_buff_info then
         SB.Anim.DizzyStop()
-        return
-    end
-
-    if not obVisualActive then
-        Util.CircularTexture(SlayerBarTrackerFrameCircleInner, "/esoui/art/icons/ability_debuff_offbalance.dds")
-        obVisualActive = true
-    end
-
-    if ob_buff_info[1] == 0 then
-        SB.Anim.DizzyStart()
-        ob_buff_info[1] = 1
     else
-        SB.Anim.DizzyContinue()
+        if not obVisualActive then
+            Util.CircularTexture(SlayerBarTrackerFrameCircleInner, "/esoui/art/icons/ability_debuff_offbalance.dds")
+            obVisualActive = true
+        end
+
+        if ob_buff_info[1] == 0 then
+            SB.Anim.DizzyStart()
+            ob_buff_info[1] = 1
+        else
+            SB.Anim.DizzyContinue()
+        end
+    end
+
+    do
+        local targetName = GetUnitName(RETICLE_OVER)
+        local currentUnit = string.format('%d|%s', ET.reticleUnitId or 0, targetName)
+        if targetName == nil and ET.reticleUnitId == nil then
+            SB.Anim.CrosshairAimEnd()
+        elseif currentUnit ~= lastReticleUnit then
+            local stkd = ET:GetBarBy(ET.reticleUnitId, targetName)
+            if stkd then
+                local parent = stkd.control
+                SlayerBarCrosshair:SetParent(parent)
+                SlayerBarCrosshair:ClearAnchors()
+                SlayerBarCrosshair:SetAnchor(CENTER, parent, TOPLEFT, 0, 3)
+                SB.Anim.CrosshairAimStart()
+            end
+        end
+        lastReticleUnit = currentUnit
     end
 end
 
@@ -850,6 +885,7 @@ local function IsCloneFight(strict)
                 if ref ~= comp then return false end
             end
         end
+        ET.cloneName = ref
         return true
     end
 
@@ -885,6 +921,12 @@ local function CloneFightDetected(count)
 
     local function OnClonePowerUpdate(unitTag, powerIndex, powerType, powerValue, powerMax, powerEffectiveMax)
         if not bossHps then return end
+        
+        if (self._lastUnitName ~= self.unitName) then
+            self.unitName = ET.cloneName or Util.GetNameOrDefault(unitTag)
+            self.nameLabel:SetText(self.unitName)
+        end
+
         local t = bossHps[unitTag]
         if not t then return end
         t.hp = powerValue
@@ -950,19 +992,6 @@ function SB.UpdateReticleTarget(unitExists)
         SB.primary_bar_frag:Refresh()
         -- SB.other_bars_frag:Refresh()
     end
-    if unitExists then
-        local ET = SB.enemyTracker
-        local stkd = ET:GetBarBy(ET.reticleUnitId, GetUnitName(RETICLE_OVER))
-        if stkd then
-            local parent = stkd.control
-            SlayerBarCrosshair:SetParent(parent)
-            SlayerBarCrosshair:ClearAnchors()
-            SlayerBarCrosshair:SetAnchor(CENTER, parent, TOPLEFT, 0, 3)
-            SB.Anim.CrosshairAimStart()
-            return
-        end
-    end
-    SB.Anim.CrosshairAimEnd()
 end
 
 function SB.OnBossesChanged(eventid, force)
@@ -991,7 +1020,7 @@ function SB.OnBossesChanged(eventid, force)
     SB.primary_bar_frag:SetHiddenForReason(REASON_NO_BOSSES, false)
     PRIMARY_BAR:Show()
     
-    ET.twinFight = count == 2 and ET.bossHealth[boss1].maxhp == ET.bossHealth["boss2"].maxhp
+    ET.twinFight = count == 2 and (ET.bossHealth[boss1] and ET.bossHealth[boss1].maxhp or 0) == (ET.bossHealth["boss2"] and ET.bossHealth["boss2"].maxhp or -1)
     SB.other_bars_frag:SetHiddenForReason(REASON_NO_BOSSES, count < 2)
     SB.other_bars_frag:SetHiddenForReason(REASON_CUSTOM_LAYOUT, ET.twinFight)
 

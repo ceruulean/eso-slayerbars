@@ -129,7 +129,7 @@ local DEFAULTS = {
     addBossResourceNumberFormat = RESOURCE_NUMBERS_SETTING_OFF,
     addBossResourceAlign = 3,
     addBossResourceFont = {"Futura Condensed", 22, "soft-shadow-thick"},
-    enableTracker = true,
+    enableCrosshairFrame = true,
     showUnitIds = false,
 }
 
@@ -648,18 +648,18 @@ local optionsData = {
     },
     {
         type = "submenu",
-        name = "Focus Tracker",
-        tooltip = "Adjust the tracker.",
+        name = "Crosshair Frame",
+        tooltip = "Adjust the crosshair effects.",
         controls = {
             {
                 type = "checkbox",
                 name = "Enable Tracker",
-                getFunc = function() return SB.sv.enableTracker end,
+                getFunc = function() return SB.sv.enableCrosshairFrame end,
                 setFunc = function(newValue)
-                    SB.sv.enableTracker = newValue
+                    SB.sv.enableCrosshairFrame = newValue
                     LivePreview()
                 end,
-                default = DEFAULTS.enableTracker,
+                default = DEFAULTS.enableCrosshairFrame,
                 width = "full",
             },
         },
