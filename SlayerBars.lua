@@ -204,24 +204,24 @@ local g_animationPool
 local DEFAULT_ANIMATION_TIME_MS = 500
 
 local function OnAnimationTransitionUpdate(animation, progress)
-    local ctrl = animation.ctrl
-    if not ctrl then
-        return
-    end
+    local bar = animation.bar
     local initialValue = animation.initialValue
     local endValue = animation.endValue
     local newBarValue = zo_lerp(initialValue, endValue, progress)
-    ctrl:ClearAnchors()
-    ctrl:SetAnchor(CENTER, animation.parent, LEFT, newBarValue, 0)
+    bar:SetValue(newBarValue)
+    if animation.leadshine then
+        animation.leadshine:ClearAnchors()
+        animation.leadshine:SetAnchor(CENTER, bar, LEFT, (newBarValue / bar.max) * animation.barWidth, 0)
+    end
 end
 
 local function OnStopAnimation(animation, completedPlaying)
-    local ctrl = animation:GetFirstAnimation().ctrl
-    ctrl.animation = nil
-    g_animationPool:ReleaseObject(animation.key)
-
-    if ctrl.onStopCallback then
-        ctrl.onStopCallback(ctrl, completedPlaying)
+    local animationKey = animation.key
+    local bar = animation:GetFirstAnimation().bar
+    bar.animation = nil
+    g_animationPool:ReleaseObject(animationKey)
+    if bar.onStopCallback then
+        bar.onStopCallback(bar, completedPlaying)
     end
 end
 
@@ -230,16 +230,17 @@ local function AcquireAnimation()
         local function Factory(objectPool)
             local animation = ANIMATION_MANAGER:CreateTimelineFromVirtual("ZO_StatusBarGrowTemplate")
             animation:GetFirstAnimation():SetUpdateFunction(OnAnimationTransitionUpdate)
-            animation:SetHandler("OnStop", OnStopAnimation)
+            animation:SetHandler("OnStop", function(...) OnStopAnimation(...)  end)
             return animation
         end
 
         local function Reset(object)
             local customAnimation = object:GetFirstAnimation()
-            customAnimation.ctrl = nil
-            customAnimation.parent = nil
+            customAnimation.bar = nil
+            customAnimation.leadshine = nil
             customAnimation.initialValue = nil
             customAnimation.endValue = nil
+            customAnimation.barWidth = nil
         end
 
         g_animationPool = ZO_ObjectPool:New(Factory, Reset)
@@ -250,60 +251,45 @@ local function AcquireAnimation()
     return animation
 end
 
-local function LeadshineSmoothTransition(self, parent, value, maxWidth, forceInit, onStopCallback, customApproachAmountMs)
-    local oldValue = self._oldVal or value
-    local oldMax = self.maxWidth or maxWidth
-    self._oldVal = value
-    self.maxWidth = maxWidth
-    self.onStopCallback = onStopCallback
+function SlayerBar_SmoothTransition(self, value, max, forceInit, onStopCallback, customApproachAmountMs)
+    local bar = self.bar
+    local oldValue = bar:GetValue()
+    bar:SetMinMax(0, max)
+    local oldMax = bar.max or max
+    bar.max = max
+    bar.onStopCallback = onStopCallback
 
-    -- Early return when initialization is forced or maxWidth <= 0
-    if forceInit or maxWidth <= 0 then
-        self:ClearAnchors()
-        self:SetAnchor(CENTER, parent, LEFT, value, 0)
-
-        if self.animation then
-            self.animation:Stop()
+    if forceInit or max <= 0 then
+        bar:SetValue(value)
+        if bar.animation then
+            bar.animation:Stop()
         end
 
         if onStopCallback then
-            onStopCallback(self)
+            onStopCallback(bar)
         end
-        return
+    else
+        if oldMax > 0 and oldMax ~= max then
+            local maxChange = max / oldMax
+            oldValue = oldValue * maxChange
+            bar:SetValue(oldValue)
+        end
+
+        if not bar.animation then
+            local updateAnimation = AcquireAnimation()
+            bar.animation = updateAnimation
+        end
+
+        local customAnimation = bar.animation:GetFirstAnimation()
+        customAnimation:SetDuration(customApproachAmountMs or DEFAULT_ANIMATION_TIME_MS)
+        customAnimation.bar = bar
+        customAnimation.leadshine = self.leadshine
+        customAnimation.initialValue = oldValue
+        customAnimation.endValue = value
+        customAnimation.barWidth = self.barWidth
+        
+        bar.animation:PlayFromStart()
     end
-
-    -- Adjust old value based on maxWidth change
-    if oldMax > 0 and oldMax ~= maxWidth then
-        local maxChange = maxWidth / oldMax
-        oldValue = oldValue * maxChange
-        self:ClearAnchors()
-        self:SetAnchor(CENTER, parent, LEFT, oldValue, 0)
-    end
-
-    -- Acquire animation if not already available
-    if not self.animation then
-        self.animation = AcquireAnimation()
-    end
-
-    local customAnimation = self.animation:GetFirstAnimation()
-    customAnimation:SetDuration(customApproachAmountMs or DEFAULT_ANIMATION_TIME_MS)
-    customAnimation.ctrl = self
-    customAnimation.parent = parent
-    customAnimation.initialValue = oldValue
-    customAnimation.endValue = value
-
-    self.animation:PlayFromStart()
-end
-
-function StackedBar:UpdateLeadshine(value, percentPos)
-    local leadshine = self.leadshine
-    if not (leadshine and self.primary) then
-        return
-    end
-    local temphide = self.uavInvuln and true or false
-    local dead = value == 0
-    leadshine:SetHidden(dead or temphide)
-    LeadshineSmoothTransition(leadshine, self.bar, percentPos * self.barWidth, self.barWidth, false)
 end
 
 function StackedBar:UpdateResourceLabel(value, mx, force)
@@ -332,6 +318,17 @@ function StackedBar:UpdateResourceLabel(value, mx, force)
     self.resourceNumbers:SetText(text)
 end
 
+
+function StackedBar:UpdateLeadshine(value, percentPos)
+    local leadshine = self.leadshine
+    if not (leadshine and self.primary) then
+        return
+    end
+    local temphide = self.uavInvuln and true or false
+    local dead = value == 0
+    leadshine:SetHidden(dead or temphide)
+end
+
 function StackedBar:SetValue(value, force)
     if not value or value < 0 or value ~= value then return end
     if value == self._lastValue and not force then
@@ -346,7 +343,7 @@ function StackedBar:SetValue(value, force)
 
     if stacks == 1 then
         ZO_StatusBar_SetGradientColor(bar, PEEL_COLORS[1])
-        ZO_StatusBar_SmoothTransition(bar, value, mx, false)
+        SlayerBar_SmoothTransition(self, value, mx, false)
 
         if not self._single then
             self.backlayer:SetHidden(true)
@@ -399,8 +396,8 @@ function StackedBar:SetValue(value, force)
         ZO_StatusBar_SetGradientColor(self.backlayer, PEEL_COLORS[nextColor])
     end
 
-    ZO_StatusBar_SmoothTransition(bar, percentPos * mx, mx, false)
     self:UpdateLeadshine(value, percentPos)
+    SlayerBar_SmoothTransition(self, percentPos * mx, mx, false)
     self:UpdateResourceLabel(value, mx, force)
 end
 
