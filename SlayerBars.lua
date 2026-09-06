@@ -87,8 +87,7 @@ function StackedBar:Initialize(unitTag, existingControl, parentControl)
     self.barContainer = ctrl:GetNamedChild("BarContainer")
     self.overlay = ctrl:GetNamedChild("FlashOverlay")
     self.overlayScrollAnim = ANIMATION_MANAGER:CreateTimelineFromVirtual("SlayerBarsScroll", self.overlay)
-    
-    self.peelColors = PEEL_COLORS
+
     -- self.overlayScrollAnim:GetAnimation(1):SetDuration(5000)
 end
 
@@ -344,10 +343,9 @@ function StackedBar:SetValue(value, force)
     local stacks = self.stacks or 1
     local mx = self.powerMax or select(2, bar:GetMinMax())
     if not mx or mx <= 0 then return end
-    local peelColors = self.peelColors
-    
+
     if stacks == 1 then
-        ZO_StatusBar_SetGradientColor(bar, peelColors[1])
+        ZO_StatusBar_SetGradientColor(bar, PEEL_COLORS[1])
         ZO_StatusBar_SmoothTransition(bar, value, mx, false)
 
         if not self._single then
@@ -371,7 +369,6 @@ function StackedBar:SetValue(value, force)
         percentPos = remainder / chunk
     end
 
-    ZO_StatusBar_SmoothTransition(bar, percentPos * mx, mx, false)
 
     local currentBar = zo_ceil(value * stacks / mx)
 
@@ -389,7 +386,7 @@ function StackedBar:SetValue(value, force)
     local colorIndex = GetColorIndex(currentBar, stacks)
     local nextColor = GetColorIndex(zo_min(currentBar - 1, stacks), stacks)
 
-    ZO_StatusBar_SetGradientColor(bar, peelColors[colorIndex])
+    ZO_StatusBar_SetGradientColor(bar, PEEL_COLORS[colorIndex])
 
     local showStacks = currentBar > 1
     local showStackCount = SB.sv.showStackCount
@@ -399,9 +396,10 @@ function StackedBar:SetValue(value, force)
         if showStackCount then
             self.stacksLabel:SetText("x" .. currentBar)
         end
-        ZO_StatusBar_SetGradientColor(self.backlayer, peelColors[nextColor])
+        ZO_StatusBar_SetGradientColor(self.backlayer, PEEL_COLORS[nextColor])
     end
 
+    ZO_StatusBar_SmoothTransition(bar, percentPos * mx, mx, false)
     self:UpdateLeadshine(value, percentPos)
     self:UpdateResourceLabel(value, mx, force)
 end
@@ -637,10 +635,6 @@ function SB.Unlock(unlock)
     local u = (unlock == nil) and true or unlock
     SB.is_unlocked = u
     if u then
-        for k, v in pairs(SB.instantiatedBars) do
-            v:Show()
-        end
-        SB.instantiatedBars["boss7"]:SetInvulnVisual()
         GAME_MENU_SCENE:AddFragment(SB.other_bars_frag)
         GAME_MENU_SCENE:AddFragment(SB.primary_bar_frag)
     else
@@ -667,6 +661,21 @@ SB.OtherBarsPool =
     end
 )
 
+local ROTISSERIE = true
+
+local function calculateDisplayIndexes(bossNo)
+    -- Bosses are numbered 1–7. # Display positions are also numbered 1–7. # The focused boss must appear at position 4.
+    local centerIndex = zo_floor((bossCount + 1) / 2)
+    local BOSS_COUNT = ET.activeBossCount
+    local indexes = {}
+    for i = 1, BOSS_COUNT do
+        -- Calculate the new position relative to the focused boss.
+        displayIndex = ((i - bossNo + centerIndex - 1) % BOSS_COUNT) + 1
+        indexes[i] = displayIndex
+        return indexes
+    end
+end
+
 function SB.UpdateDisplayLayout()
     local primaryFontSize = SB.sv.primaryNameFont[2]
     local primaryPaddingTop = primaryFontSize * 1.5
@@ -682,10 +691,11 @@ function SB.UpdateDisplayLayout()
         local minPadding = 2
         local addiWidth = SB.sv.addBossBarWidth
         local addiHeight = SB.sv.addBossBarHeight
-        local halfW = addiWidth / 2
+        -- local halfW = addiWidth / 2
         local secondaryFontSize = SB.sv.addBossNameFont[2]
         local innerPadding = 5
         local rowHeight = addiHeight + zo_max(minPadding, (secondaryFontSize * 1.5))
+
         for i = 2, MAX_BOSSES do
             local tag = "boss" .. i
             local stkd = SB.instantiatedBars[tag]
@@ -694,9 +704,9 @@ function SB.UpdateDisplayLayout()
             if SB.sv.addBossDisplayLayout == SB.Settings.ADD_BOSS_DISPLAY_COMPACT then
                 local evenOdd = i % 2
                 local offsetY = (zo_floor(i / 2) * rowHeight) - secondaryFontSize
-                stkd.barWidth = halfW - innerPadding
+                stkd.barWidth = addiWidth - innerPadding
                 stkd.control:SetWidth(stkd.barWidth)
-                stkd.control:SetAnchor(TOPLEFT, SlayerBarsOtherBars, TOPLEFT, evenOdd * (halfW + innerPadding), offsetY)
+                stkd.control:SetAnchor(TOPLEFT, SlayerBarsOtherBars, TOPLEFT, evenOdd * (addiWidth + innerPadding), offsetY)
             else
                 local offsetY = (i - 2) * rowHeight + secondaryFontSize
                 stkd.barWidth = addiWidth
@@ -742,7 +752,11 @@ function SB.UpdateBars()
 end
 
 function SB.UpdateScope(inCombat)
-    SlayerBarTracker:SetHidden(true)
+    if not SB.sv.enableCrosshairFrame then
+        SlayerBarTracker:SetHidden(true)
+        return
+    end
+
     local currentRole = GetSelectedLFGRole()
     local isTank = currentRole == LFG_ROLE_TANK
     SlayerBarTrackerIconDemon:SetHidden(not isTank)
@@ -811,6 +825,11 @@ function SB.OnMoveStop(control)
     SB.UpdateBars()
 end
 
+local function enlargeHpBar(stackedBar)
+    local ctrl = stackedBar.control
+    ctrl:SetScale(1.2)
+end
+
 function SB.OnUpdate()
     local ET = SB.enemyTracker
     local showIds = SB.sv.showUnitIds
@@ -867,12 +886,20 @@ function SB.OnUpdate()
                 SlayerBarCrosshair:ClearAnchors()
                 SlayerBarCrosshair:SetAnchor(CENTER, parent, TOPLEFT, 0, 3)
                 SB.Anim.CrosshairAimStart()
+                -- ET.focusedBar.control:SetScale(1.2)
+            else
+                --  if ET.focusedBar then
+                    -- ET.focusedBar.control:SetScale(1.0)
+                    -- ET.focusedBar = nil
+                -- end
             end
         end
         lastReticleUnit = currentUnit
     end
 end
 
+-- Detects if 3 or more active bosses have same HP.
+-- Strict mode limits the check to Ossein Cage and checks for same name
 local function IsCloneFight(strict)
     local ET = SB.enemyTracker
 
@@ -997,7 +1024,7 @@ end
 function SB.OnBossesChanged(eventid, force)
     local ET = SB.enemyTracker
     local count = 0
-
+    
     for i = 1, MAX_BOSSES do
         local tag = "boss" .. i
         if DoesUnitExist(tag) then
@@ -1006,7 +1033,7 @@ function SB.OnBossesChanged(eventid, force)
             ET.bossHealth[tag] = { hp = current, maxhp = maxhp }
         else
             ET.bossHealth[tag] = nil
-            SB.instantiatedBars[tag]:Release()
+            if not SB.is_unlocked then SB.instantiatedBars[tag]:Release() end
         end
     end
 
@@ -1015,10 +1042,11 @@ function SB.OnBossesChanged(eventid, force)
 
     if count == 0 then
         CALLBACK_MANAGER:FireCallbacks("OnBossFightEnd", ET.twinFight, ET.cloneFight)
+        return
     end
 
     SB.primary_bar_frag:SetHiddenForReason(REASON_NO_BOSSES, false)
-    PRIMARY_BAR:Show()
+    -- PRIMARY_BAR:Show()
     
     ET.twinFight = count == 2 and (ET.bossHealth[boss1] and ET.bossHealth[boss1].maxhp or 0) == (ET.bossHealth["boss2"] and ET.bossHealth["boss2"].maxhp or -1)
     SB.other_bars_frag:SetHiddenForReason(REASON_NO_BOSSES, count < 2)
@@ -1036,6 +1064,9 @@ function SB.OnBossesChanged(eventid, force)
             end
         end
     end
+
+    SB.primary_bar_frag:Refresh()
+    SB.other_bars_frag:Refresh()
 
     if force then
         SB.UpdateDisplayLayout()
@@ -1091,7 +1122,7 @@ function SB.InitBars()
 
     SB.primary_bar_frag:SetConditional(function () return SB.is_unlocked or SB.enemyTracker.activeBossCount > 0 end)
     SB.other_bars_frag:SetConditional(function () return SB.is_unlocked or
-        (SB.enemyTracker.activeBossCount > 1 and not SB.other_bars_frag.hiddenReasons:IsHidden())
+        (SB.enemyTracker.activeBossCount > 1)
         end)
     HUD_SCENE:AddFragment(SB.primary_bar_frag)
     HUD_UI_SCENE:AddFragment(SB.primary_bar_frag)

@@ -69,22 +69,29 @@ SB.enemyTracker = {
     activeBossCount = 0,
     twinFight = false,
     cloneFight = false,
+    focusedBar = nil,
 }
+
+local enemyTracker = SB.enemyTracker
 
 function SB.enemyTracker:GetBarBy(unitId, unitName)
     if unitId then
         local tag = self.byId[unitId].unitTag
-        if tag then return SB.instantiatedBars[tag] end
+        if tag then
+            enemyTracker.focusedBar = SB.instantiatedBars[tag]
+            return enemyTracker.focusedBar
+        end
     end
     if unitName then
         for t,v in pairs(SB.instantiatedBars) do
-            if v.unitName == unitName then return v end
+            if v.unitName == unitName then
+                enemyTracker.focusedBar = v
+                return v
+            end
         end
-        return nil
     end
+    return nil
 end
-
-local enemyTracker = SB.enemyTracker
 
 local function TrackUnit(unitTag, unitId)
     if not unitId then

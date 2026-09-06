@@ -6,6 +6,9 @@ local panelName = "SlayerBarsSettingsPanel"
 local savedVersion = 1
 local is_previewing = false
 local is_previewing_twins = false
+local is_auto_decrease = false
+local REASON_PREVIEWING = "Previewing"
+
 ZO_CreateStringId("SB_ALIGN_RIGHT", "Right")
 
 function GetTableKeys(tab)
@@ -33,7 +36,7 @@ local ALIGN = {
 local ALIGN_CHOICES = GetTableValues(ALIGN)
 local ALIGN_CHOICES_VALUES = GetTableKeys(ALIGN)
 
-local BAR_HEIGHT_MIN = 15
+local BAR_HEIGHT_MIN = 10
 local BAR_HEIGHT_MAX = 50
 
 local BACKDROP_CHOICES = {
@@ -136,7 +139,7 @@ local DEFAULTS = {
 local previewBar
 local dummycount = 100
 local function AutoValue()
-    if not is_previewing then
+    if not is_auto_decrease or not is_previewing then
         return
     end
     if dummycount % 10 == 0 and dummycount < 100 then
@@ -160,16 +163,22 @@ end
 
 local function ShowPreviewBars()
     is_previewing = true
+
+    for k, v in pairs(SB.instantiatedBars) do
+        v:Show()
+    end
+    SB.instantiatedBars["boss7"]:SetInvulnVisual()
+
     local lastChild
     local spacing = SB.sv.primaryBarHeight + SB.sv.primaryNameFont[2]
+    GAME_MENU_SCENE:AddFragment(SB.primary_bar_frag)
     GAME_MENU_SCENE:AddFragment(SB.other_bars_frag)
     previewBar = SB.instantiatedBars["boss1"]
-    previewBar.control:SetHidden(false)
+    SB.primary_bar_frag.hiddenReasons:SetShownForReason(REASON_PREVIEWING, true)
     previewBar:SetMinMax(0, 100000000)
     previewBar:SetStacks(10)
     previewBar:SetValue(100000000)
-    SlayerBarsOtherBars:SetMovable(true)
-    AutoValue()
+    SB.other_bars_frag.hiddenReasons:SetShownForReason(REASON_PREVIEWING, true)
 end
 
 local function UpdatePreviewBars()
@@ -178,6 +187,9 @@ end
 
 local function HidePreviewBars()
     is_previewing = false
+    is_previewing_twins = false
+    SB.primary_bar_frag.hiddenReasons:SetShownForReason(REASON_PREVIEWING, false)
+    SB.other_bars_frag.hiddenReasons:SetShownForReason(REASON_PREVIEWING, false)
 end
 
 local function LivePreview()
@@ -199,6 +211,11 @@ local optionsData = {
         end,
         setFunc = function(newValue)
             SB.Unlock(newValue)
+            if newValue then
+                ShowPreviewBars()
+            else
+                HidePreviewBars()
+            end
         end,
         width = "half"
     },
@@ -312,7 +329,7 @@ local optionsData = {
                 func = function()
                     if is_previewing_twins then
                        SB.OnBossesChanged(_, true)
-                       SB.Unlock(SB.is_unlocked)
+                       -- SB.Unlock(SB.is_unlocked)
                     else
                         SB.enemyTracker.twinFight = true
                         SB.UpdateDisplayLayout()
@@ -323,13 +340,13 @@ local optionsData = {
             },
             {
                 type = "button",
-                name = "Preview Boss Bar",
-                tooltip = "Preview stack color in a progressing boss fight.",
+                name = "Preview Bar Progression",
+                tooltip = "Preview stack color in a progressing fight.",
                 func = function()
-                    if is_previewing then
-                        HidePreviewBars()
-                    else
+                    is_auto_decrease = not is_auto_decrease
+                    if is_auto_decrease then
                         ShowPreviewBars()
+                        AutoValue()
                     end
                 end,
                 width = "half"
@@ -384,7 +401,7 @@ local optionsData = {
             },
             {
                 type = "slider",
-                name = "Text Size",
+                name = "Name Text Size",
                 getFunc = function()
                     return SB.sv.primaryNameFont[2]
                 end,
@@ -420,7 +437,7 @@ local optionsData = {
             },
             {
                 type = "dropdown",
-                name = "Alignment",
+                name = RESOURCE_NUMBER_STRING.." Alignment",
                 getFunc = function()
                     return SB.sv.primaryResourceAlign
                 end,
@@ -450,7 +467,7 @@ local optionsData = {
             },
             {
                 type = "slider",
-                name = "Text Size",
+                name = RESOURCE_NUMBER_STRING.." Text Size",
                 getFunc = function()
                     return SB.sv.primaryResourceFont[2]
                 end,
@@ -477,7 +494,7 @@ local optionsData = {
             },
             {
                 type = "dropdown",
-                name = "Alignment",
+                name = "Stack Count Alignment",
                 getFunc = function()
                     return SB.sv.stackCountAlign
                 end,
@@ -648,8 +665,22 @@ local optionsData = {
     },
     {
         type = "submenu",
-        name = "Crosshair Frame",
-        tooltip = "Adjust the crosshair effects.",
+        name = "Twin Fight Bars",
+        tooltip = "Adjust the display of twin fights.",
+        controls = {
+            {
+            type = "description",
+            title = "My Description",
+            text = [[My very informative description text that can span
+multiple \nrows,
+have |cff0000color tags|r and |t14:14:/EsoUI/Art/Help/help_tabIcon_tutorial_up.dds|t icons.]],
+            },
+        },
+    },
+    {
+        type = "submenu",
+        name = "Special Effects",
+        tooltip = "Adjust special effects tracking.",
         controls = {
             {
                 type = "checkbox",
@@ -719,8 +750,7 @@ function SlayerBars.InitSettingsMenu()
                 return
             end
             HidePreviewBars()
-            is_previewing = false
-            is_previewing_twins = false
+            is_auto_decrease = false
             SB.OnBossesChanged(_, true)
             SB.UpdateBars()
         end
